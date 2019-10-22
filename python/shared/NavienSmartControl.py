@@ -36,15 +36,15 @@ class OperateMode(enum.Enum):
  ACTIVE = 128
 
 class ModeState(enum.Enum):
- POWEROFF = 1
- GOOUTON = 2
- INSIDEHEAT = 3
- ONDOLHEAT = 4
- SIMPLERESERVE = 5
- CIRCLERESERVE = 6
- HOTWATERON = 8
+ POWER_OFF = 1
+ GOOUT_ON = 2
+ INSIDE_HEAT = 3
+ ONDOL_HEAT = 4
+ SIMPLE_RESERVE = 5
+ CIRCLE_RESERVE = 6
+ HOTWATER_ON = 8
 
-class HeatType(enum.Enum):
+class HeatLevel(enum.Enum):
  LOW = 1
  MEDIUM = 2
  HIGH = 3
@@ -149,7 +149,7 @@ class NavienSmartControl:
  def parseHomeState(self, data):
 
   # The data is returned with a fixed header for the first 42 bytes.
-  homeStateColumns = collections.namedtuple('homeState', ['deviceid','nationCode','hwRev','swRev','netType','controlType','boilerModelType','roomCnt','smsFg','errorCode','hotWaterSetTemp','heatType','optionUseFg','currentMode','currentInsideTemp','insideHeatTemp','ondolHeatTemp','repeatReserveHour','repeatReserveMinute','hour24ReserveTime1','hour24ReserveTime2','hour24ReserveTime3','simpleReserveSetTime','simpleReserveSetMinute','operateMode','tempControlType','hotwaterMin','hotwaterMax','ondolHeatMin','ondolHeatMax','insideHeatMin','insideHeatMax','reserve09', 'reserve10'])
+  homeStateColumns = collections.namedtuple('homeState', ['deviceid','nationCode','hwRev','swRev','netType','controlType','boilerModelType','roomCnt','smsFg','errorCode','hotWaterSetTemp','heatLevel','optionUseFg','currentMode','currentInsideTemp','insideHeatTemp','ondolHeatTemp','repeatReserveHour','repeatReserveMinute','hour24ReserveTime1','hour24ReserveTime2','hour24ReserveTime3','simpleReserveSetTime','simpleReserveSetMinute','operateMode','tempControlType','hotwaterMin','hotwaterMax','ondolHeatMin','ondolHeatMax','insideHeatMin','insideHeatMax','reserve09', 'reserve10'])
   homeState = homeStateColumns._make(struct.unpack('          8s          B          B       B        B          B               B              B        B         H              B             B            B            B                B                  B               B                B                     B                     B                    B                           B             B                          B                B              B               B             B               B              B               B               B             B            B', data[:42]))
 
   # If the roomCnt > 1 then the remaining data will be room state information.
@@ -175,23 +175,23 @@ class NavienSmartControl:
   print('smsFg?: ' + str(homeState.smsFg))
   print('Error: ' + ('No Error' if homeState.errorCode == 0 else homeState.errorCode))
   print('Hot Water Set Temperature: ' + str(self.getTemperatureFromByte(homeState.hotWaterSetTemp)) + ' °C')
-  print('Heat Intensity Type: ' + [ 'Unknown', 'Low', 'Medium', 'High' ][homeState.heatType])
+  print('Heat Intensity Type: ' + [ 'Unknown', 'Low', 'Medium', 'High' ][homeState.heatLevel])
   print('Option Use Flags: ' + bin(homeState.optionUseFg) + (' (Usable 24 Hour Reserve)' if homeState.optionUseFg & 128 == 128 else ''))
 
   print('Current Mode: ', end = '')
-  if homeState.currentMode == ModeState.POWEROFF.value:
+  if homeState.currentMode == ModeState.POWER_OFF.value:
    print('Powered Off')
-  elif homeState.currentMode == ModeState.GOOUTON.value:
+  elif homeState.currentMode == ModeState.GOOUT_ON.value:
    print('Holiday Mode')
-  elif homeState.currentMode == ModeState.INSIDEHEAT.value:
+  elif homeState.currentMode == ModeState.INSIDE_HEAT.value:
    print('Room Temperature Control')
-  elif homeState.currentMode == ModeState.ONDOLHEAT.value:
+  elif homeState.currentMode == ModeState.ONDOL_HEAT.value:
    print('Central Heating Control')
-  elif homeState.currentMode == ModeState.SIMPLERESERVE.value:
+  elif homeState.currentMode == ModeState.SIMPLE_RESERVE.value:
    print('Heating Inteval')
-  elif homeState.currentMode == ModeState.CIRCLERESERVE.value:
+  elif homeState.currentMode == ModeState.CIRCLE_RESERVE.value:
    print('24 Hour Program')
-  elif homeState.currentMode == ModeState.HOTWATERON.value:
+  elif homeState.currentMode == ModeState.HOTWATER_ON.value:
    print('Hot Water Only')
   else:
    print(str(homeState.currentMode))
@@ -288,5 +288,5 @@ class NavienSmartControl:
  def setQuickHotWater(self, homeState):
   return self.setOperationMode(homeState, OperateMode.QUICK_HOTWATER, 1, 0, 0, 0, 0)
 
- def setHeatType(self, homeState, heatType):
-  return self.setOperationMode(homeState, OperateMode.HEAT_LEVEL, 1, 0, 0, 0, heatType.value)
+ def setHeatLevel(self, homeState, heatLevel):
+  return self.setOperationMode(homeState, OperateMode.HEAT_LEVEL, 1, 0, 0, 0, heatLevel.value)
