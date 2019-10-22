@@ -219,7 +219,7 @@ class NavienSmartControl:
   if homeState.tempControlType & TempControlType.POINTWATER: print(' (POINTWATER)')
   if homeState.tempControlType & TempControlType.WATERMODE.value > 0: print(' (WATERMODE_' + str(homeState.tempControlType & TempControlType.WATERMODE.value) + ') = ' + ['Unknown','Stepped','Temperature'][(homeState.tempControlType & TempControlType.WATERMODE.value)-1] + ' Controlled')
   print()
-  
+
   print('Hot Water Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.hotwaterMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.hotwaterMax)) + ' °C')
   print('Central Heating Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.ondolHeatMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.ondolHeatMax)) + ' °C')
   print('Room Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.insideHeatMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.insideHeatMax)) + ' °C')
