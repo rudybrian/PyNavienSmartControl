@@ -4,7 +4,7 @@
 from __future__ import print_function
 
 # The NavienSmartControl code is in a library.
-from shared.NavienSmartControl import NavienSmartControl, OperateMode
+from shared.NavienSmartControl import NavienSmartControl
 
 # The credentials are loaded from a separate file.
 import json
@@ -22,27 +22,28 @@ encodedUserID = navienSmartControl.login()
 # Load the list of devices connected.
 gatewayList = navienSmartControl.gatewayList(encodedUserID)
 
-# The first 6 bytes is the MAC address.
+# The first 16 characters (8 bytes represented as hex characters) is the DeviceID (only seen with a valid response).
 if len(gatewayList[0]) == 16:
- print('Serial Number: ' + gatewayList[0])
+
+ # Print out the gateway list information.
+ print('---------------------------')
+ print('Device ID: ' + gatewayList[0])
  print('Ready?: ' + gatewayList[1])
- print('2: ' + gatewayList[2])
+ print('Unknown 1: ' + gatewayList[2])
  print('Connected: ' + gatewayList[3])
  print('Last Seen: ' + gatewayList[4])
- print('5: ' + gatewayList[5])
- print('6: ' + gatewayList[6])
- print('7: ' + gatewayList[7])
+ print('Unknown 2-4: ' + gatewayList[5] + '/' + gatewayList[6] + '/' + gatewayList[7])
  print('IP Address: ' + gatewayList[8])
  print('TCP Port Number: ' + gatewayList[9])
- print()
+ print('---------------------------\n')
 
  # Connect to the socket.
  homeState = navienSmartControl.connect(gatewayList[0])
 
- # Print out the status.
+ # Print out the current status.
  navienSmartControl.printHomeState(homeState)
 
- # Change temperature.
+ # Change the temperature.
  #navienSmartControl.setInsideHeat(homeState, 19.0)
 
 else:

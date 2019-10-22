@@ -85,7 +85,7 @@ class NavienSmartControl:
   # If an error occurs this will raise it, otherwise it returns the encodedUserID (this is just the BASE64 UserID typically).
   return self.handleResponse(response)
 
- # This is the list of boiler controllers or "gateways". Note how no login state is required.
+ # This is the list of the details for the boiler controller or "gateway". Note how no login state is required.
  def gatewayList(self, encodedUserID):
   # Get the list of connected devices.
   response = requests.post(NavienSmartControl.navienWebServer + '/mobile_gateway_list.asp', headers=NavienSmartControl.stealthyHeaders, data={'UserID': encodedUserID, 'Ticket':'0'})
@@ -218,6 +218,7 @@ class NavienSmartControl:
   if homeState.tempControlType & TempControlType.POINTWATER: print(' (POINTWATER)')
   if homeState.tempControlType & TempControlType.WATERMODE.value > 0: print(' (WATERMODE_' + str(homeState.tempControlType & TempControlType.WATERMODE.value) + ') = ' + ['Unknown','Stepped','Temperature'][(homeState.tempControlType & TempControlType.WATERMODE.value)-1] + ' Controlled')
   print()
+  
   print('Hot Water Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.hotwaterMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.hotwaterMax)) + ' °C')
   print('Central Heating Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.ondolMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.ondolMax)) + ' °C')
   print('Room Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.insideMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.insideMax)) + ' °C')
@@ -239,7 +240,7 @@ class NavienSmartControl:
   commandListCount = 0
 
   sendData = bytearray([commandListSequence, commandListCommand, commandListDataLength, commandListCount])
-  sendData.extend(homeState.serialnum)
+  sendData.extend(homeState.deviceid)
 
   commandSequence = 1
   sendData.extend([commandSequence, operateMode.value, value01, value02, value03, value04, value05]);
@@ -261,11 +262,11 @@ class NavienSmartControl:
   return self.setOperationMode(homeState, OperateMode.GOOUTON, 1, 0, 0, 0, 0)
 
  def setInsideHeat(self, homeState, temperature):
-  if (temperature < homeState.insideMin or temperature > homeState.insideMax): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
+  if (temperature < self.getTemperatureFromByte(homeState.insideMin) or temperature > self.getTemperatureFromByte(homeState.insideMax)): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
   return self.setOperationMode(homeState, OperateMode.INSIDEHEAT, 1, 0, 0, 0, self.getTemperatureByte(temperature))
 
  def setOndolHeat(self, homeState, temperature):
-  if (temperature < homeState.ondolMin or temperature > homeState.ondolMax): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
+  if (temperature < self.getTemperatureFromByte(homeState.ondolMin) or temperature > self.getTemperatureFromByte(homeState.ondolMax)): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
   return self.setOperationMode(homeState, OperateMode.ONDOLHEAT, 1, 0, 0, 0, self.getTemperatureByte(temperature))
 
  def setRepeatReserve(self, homeState, hourInterval, durationMinutes):
@@ -281,7 +282,7 @@ class NavienSmartControl:
   return self.setOperationMode(homeState, OperateMode.HOTWATEROFF, 1, 0, 0, 0, 0)
 
  def setHotWaterHeat(self, homeState, temperature):
-  if (temperature < homeState.hotwaterMin or temperature > homeState.hotwaterMax): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
+  if (temperature < self.getTemperatureFromByte(homeState.hotwaterMin) or temperature > self.getTemperatureFromByte(homeState.hotwaterMax)): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
   return self.setOperationMode(homeState, OperateMode.WATERSETTEMP, 1, 0, 0, 0, self.getTemperatureByte(temperature))
 
  def setQuickHotWater(self, homeState):
