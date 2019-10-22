@@ -169,7 +169,7 @@ class NavienSmartControl:
   print('Hardware Revision: V' + str(homeState.hwRev))
   print('Software Version: V' + str(homeState.swRev) + '.0')
   print('Network Type: ' + str(homeState.netType))
-  print('Controller Type?: ' + str(homeState.controlType))
+  print('Control Type?: ' + str(homeState.controlType))
   print('Boiler Model Type: ' + str(homeState.boilerModelType))
   print('Room Controllers: ' + str(homeState.roomCnt))
   print('smsFg?: ' + str(homeState.smsFg))
