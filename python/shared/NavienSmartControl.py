@@ -19,20 +19,20 @@ import binascii
 import enum
 
 class OperateMode(enum.Enum):
- POWEROFF = 1
- POWERON = 2
- GOOUTOFF = 3
- GOOUTON = 4
- INSIDEHEAT = 5
- ONDOLHEAT = 6
- REPEATRESERVE = 7
- CIRCLERESERVE = 8
- SIMPLERESERVE = 9
- HOTWATERON = 10
- HOTWATEROFF = 11
- WATERSETTEMP = 12
- QUICKHOTWATER = 13
- HEATTYPE = 14
+ POWER_OFF = 1
+ POWER_ON = 2
+ GOOUT_OFF = 3
+ GOOUT_ON = 4
+ INSIDE_HEAT = 5
+ ONDOL_HEAT = 6
+ REPEAT_RESERVE = 7
+ CIRCLE_RESERVE = 8
+ SIMPLE_RESERVE = 9
+ HOTWATER_ON = 10
+ HOTWATER_OFF = 11
+ WATER_SET_TEMP = 12
+ QUICK_HOTWATER = 13
+ HEAT_LEVEL = 14
  ACTIVE = 128
 
 class ModeState(enum.Enum):
@@ -250,43 +250,43 @@ class NavienSmartControl:
  # ------ Set OperationMode convenience methods --------- #
 
  def setPowerOff(self, homeState):
-  return self.setOperationMode(homeState, OperateMode.POWEROFF, 1, 0, 0, 0, 0)
+  return self.setOperationMode(homeState, OperateMode.POWER_OFF, 1, 0, 0, 0, 0)
 
  def setPowerOn(self, homeState):
-  return self.setOperationMode(homeState, OperateMode.POWERON, 1, 0, 0, 0, 0)
+  return self.setOperationMode(homeState, OperateMode.POWER_ON, 1, 0, 0, 0, 0)
 
  def setGoOutOff(self, homeState):
-  return self.setOperationMode(homeState, OperateMode.GOOUTOFF, 1, 0, 0, 0, 0)
+  return self.setOperationMode(homeState, OperateMode.GOOUT_OFF, 1, 0, 0, 0, 0)
 
  def setGoOutOn(self, homeState):
-  return self.setOperationMode(homeState, OperateMode.GOOUTON, 1, 0, 0, 0, 0)
+  return self.setOperationMode(homeState, OperateMode.GOOUT_ON, 1, 0, 0, 0, 0)
 
  def setInsideHeat(self, homeState, temperature):
   if (temperature < self.getTemperatureFromByte(homeState.insideHeatMin) or temperature > self.getTemperatureFromByte(homeState.insideHeatMax)): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
-  return self.setOperationMode(homeState, OperateMode.INSIDEHEAT, 1, 0, 0, 0, self.getTemperatureByte(temperature))
+  return self.setOperationMode(homeState, OperateMode.INSIDE_HEAT, 1, 0, 0, 0, self.getTemperatureByte(temperature))
 
  def setOndolHeat(self, homeState, temperature):
   if (temperature < self.getTemperatureFromByte(homeState.ondolHeatMin) or temperature > self.getTemperatureFromByte(homeState.ondolHeatMax)): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
-  return self.setOperationMode(homeState, OperateMode.ONDOLHEAT, 1, 0, 0, 0, self.getTemperatureByte(temperature))
+  return self.setOperationMode(homeState, OperateMode.ONDOL_HEAT, 1, 0, 0, 0, self.getTemperatureByte(temperature))
 
  def setRepeatReserve(self, homeState, hourInterval, durationMinutes):
-  return self.setOperationMode(homeState, OperateMode.REPEATRESERVE, 1, 0, 0, hourInterval, durationMinutes)
+  return self.setOperationMode(homeState, OperateMode.REPEAT_RESERVE, 1, 0, 0, hourInterval, durationMinutes)
 
  def setCircleReserve(self, homeState, schedule1, schedule2, schedule3):
-  return self.setOperationMode(homeState, OperateMode.CIRCLERESERVE, 1, 0, schedule1, schedule2, schedule3)
+  return self.setOperationMode(homeState, OperateMode.CIRCLE_RESERVE, 1, 0, schedule1, schedule2, schedule3)
 
  def setHotWaterOn(self, homeState):
-  return self.setOperationMode(homeState, OperateMode.HOTWATERON, 1, 0, 0, 0, 0)
+  return self.setOperationMode(homeState, OperateMode.HOTWATER_ON, 1, 0, 0, 0, 0)
 
  def setHotWaterOff(self, homeState):
-  return self.setOperationMode(homeState, OperateMode.HOTWATEROFF, 1, 0, 0, 0, 0)
+  return self.setOperationMode(homeState, OperateMode.HOTWATER_OFF, 1, 0, 0, 0, 0)
 
  def setHotWaterHeat(self, homeState, temperature):
   if (temperature < self.getTemperatureFromByte(homeState.hotwaterMin) or temperature > self.getTemperatureFromByte(homeState.hotwaterMax)): raise ValueError('Temperature specified is outside the boiler\'s supported range.')
-  return self.setOperationMode(homeState, OperateMode.WATERSETTEMP, 1, 0, 0, 0, self.getTemperatureByte(temperature))
+  return self.setOperationMode(homeState, OperateMode.WATER_SET_TEMP, 1, 0, 0, 0, self.getTemperatureByte(temperature))
 
  def setQuickHotWater(self, homeState):
-  return self.setOperationMode(homeState, OperateMode.QUICKHOTWATER, 1, 0, 0, 0, 0)
+  return self.setOperationMode(homeState, OperateMode.QUICK_HOTWATER, 1, 0, 0, 0, 0)
 
  def setHeatType(self, homeState, heatType):
-  return self.setOperationMode(homeState, OperateMode.HEATTYPE, 1, 0, 0, 0, heatType.value)
+  return self.setOperationMode(homeState, OperateMode.HEAT_LEVEL, 1, 0, 0, 0, heatType.value)
