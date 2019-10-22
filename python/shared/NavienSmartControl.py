@@ -48,16 +48,20 @@ class HeatType(enum.Enum):
  LOW = 1
  MEDIUM = 2
  HIGH = 3
- 
+
 class TempControlType(enum.IntFlag):
- Unknown1 = enum.auto()
- Unknown2 = enum.auto()
- Unknown3 = enum.auto()
- Unknown4 = enum.auto()
- ONDOLHEAT = enum.auto()
- INSIDEHEAT = enum.auto()
- Unknown7 = enum.auto()
- Unknown8 = enum.auto()
+
+ # 3rd bit.
+ POINTINSIDE = 32
+
+ # 4th bit.
+ POINTONDOL = 16
+ 
+ # 5th bit.
+ POINTWATER = 8
+ 
+ # 6th - 8th bits (last 3 bits).
+ WATERMODE = 7
 
 class NavienSmartControl:
 
@@ -145,7 +149,7 @@ class NavienSmartControl:
  def parseHomeState(self, data):
 
   # The data is returned with a fixed header for the first 42 bytes.
-  homeStateColumns = collections.namedtuple('homeState', ['serialnum','code','hwRev','swRev','netType','controlType','boilerModelType','roomCnt','smsFg','errorCode','hotWaterSetTemp','heatType','optionUseFg','modeState','insideTemp','heatSetTemp','ondolSetTemp','repeatReserveSetTime','repeatReserveSetMinute','circleReserveSetTime1','circleReserveSetTime2','circleReserveSetTime3','simpleReserveSetTime','simpleReserveSetMinute','operateMode','tempControlType','hotwaterMin','hotwaterMax','ondolMin','ondolMax','insideMin','insideMax','reserve09', 'reserve10'])
+  homeStateColumns = collections.namedtuple('homeState', ['deviceid','code','hwRev','swRev','netType','controlType','boilerModelType','roomCnt','smsFg','errorCode','hotWaterSetTemp','heatType','optionUseFg','modeState','insideTemp','heatSetTemp','ondolSetTemp','repeatReserveSetTime','repeatReserveSetMinute','circleReserveSetTime1','circleReserveSetTime2','circleReserveSetTime3','simpleReserveSetTime','simpleReserveSetMinute','operateMode','tempControlType','hotwaterMin','hotwaterMax','ondolMin','ondolMax','insideMin','insideMax','reserve09', 'reserve10'])
   homeState = homeStateColumns._make(struct.unpack('          8s        B      B       B        B          B               B              B        B         H              B             B            B            B           B            B              B               B                      B                        B                          B                           B                       B                      B                B              B               B             B            B          B            B         B           B              B', data[:42]))
 
   # If the roomCnt > 1 then the remaining data will be room state information.
@@ -160,8 +164,8 @@ class NavienSmartControl:
   return homeState
 
  def printHomeState(self, homeState):
-  print('Serial Number: ' + ':'.join('%02x' % b for b in homeState.serialnum))
-  print('Code?: ' + str(homeState.code))
+  print('Device ID: ' + ':'.join('%02x' % b for b in homeState.deviceid))
+  print('Country Code?: ' + str(homeState.code))
   print('Hardware Revision: V' + str(homeState.hwRev))
   print('Software Version: V' + str(homeState.swRev) + '.0')
   print('Network Type: ' + str(homeState.netType))
@@ -209,14 +213,10 @@ class NavienSmartControl:
   print('Operation Mode Flags: ' + bin(homeState.operateMode) + (' (Heating)' if homeState.operateMode & OperateMode.HEATING.value else ''))
   print()
   print('Temperature Control Supported Types: ' + bin(homeState.tempControlType))
-  if TempControlType.Unknown1 & homeState.tempControlType: print(' (Unknown1)')
-  if TempControlType.Unknown2 & homeState.tempControlType: print(' (Unknown2)')
-  if TempControlType.Unknown3 & homeState.tempControlType: print(' (Unknown3)')
-  if TempControlType.Unknown4 & homeState.tempControlType: print(' (Unknown4)')
-  if TempControlType.ONDOLHEAT & homeState.tempControlType: print(' (ONDOLHEAT)')
-  if TempControlType.INSIDEHEAT & homeState.tempControlType: print(' (INSIDEHEAT)')
-  if TempControlType.Unknown7 & homeState.tempControlType: print(' (Unknown7)')
-  if TempControlType.Unknown8 & homeState.tempControlType: print(' (Unknown8)')
+  if homeState.tempControlType & TempControlType.POINTINSIDE: print(' (POINTINSIDE)')
+  if homeState.tempControlType & TempControlType.POINTONDOL: print(' (POINTONDOL)')
+  if homeState.tempControlType & TempControlType.POINTWATER: print(' (POINTWATER)')
+  if homeState.tempControlType & TempControlType.WATERMODE.value > 0: print(' (WATERMODE_' + str(homeState.tempControlType & TempControlType.WATERMODE.value) + ') = ' + ['Unknown','Stepped','Temperature'][(homeState.tempControlType & TempControlType.WATERMODE.value)-1] + ' Controlled')
   print()
   print('Hot Water Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.hotwaterMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.hotwaterMax)) + ' °C')
   print('Central Heating Temperature Supported Range: ' + str(self.getTemperatureFromByte(homeState.ondolMin)) + ' °C - ' + str(self.getTemperatureFromByte(homeState.ondolMax)) + ' °C')
