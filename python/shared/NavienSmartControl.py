@@ -158,7 +158,7 @@ class NavienSmartControl:
  
   # These are hardcoded values to watch out for.
   if data == binascii.unhexlify('444444444400000000000000000000') or data == binascii.unhexlify('04040404040404040404'):
-   raise Exception('An error occurs in the process of retrieving data. Please restart for use')
+   raise Exception('An error occurred in the process of retrieving data; please restart to retry.')
 
   # Return the resulting parsed data.
   return homeState
@@ -177,6 +177,7 @@ class NavienSmartControl:
   print('Hot Water Set Temperature: ' + str(self.getTemperatureFromByte(homeState.hotWaterSetTemp)) + ' °C')
   print('Heat Intensity Type: ' + [ 'Unknown', 'Low', 'Medium', 'High' ][homeState.heatLevel])
   print('Option Use Flags: ' + bin(homeState.optionUseFg) + (' (Usable 24 Hour Reserve)' if homeState.optionUseFg & 128 == 128 else ''))
+  print()
 
   print('Current Mode: ', end = '')
   if homeState.currentMode == ModeState.POWER_OFF.value:
