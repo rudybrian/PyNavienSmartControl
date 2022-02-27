@@ -18,6 +18,9 @@ import binascii
 # We use Python enums.
 import enum
 
+# We need json support for parsing the REST API response
+import json
+
 class OperateMode(enum.Enum):
  POWER_OFF = 1
  POWER_ON = 2
@@ -49,6 +52,15 @@ class HeatLevel(enum.Enum):
  MEDIUM = 2
  HIGH = 3
 
+class controlType(enum.Enum):
+ UNKNOWN = 0
+ CHANNEL_INFORMATION = 1
+ STATE = 2
+ TREND_SAMPLE = 3
+ TREND_MONTH = 4
+ TREND_YEAR = 5
+ ERROR_CODE = 6
+
 class TempControlType(enum.IntFlag):
 
  # 3rd bit.
@@ -69,7 +81,7 @@ class NavienSmartControl:
  stealthyHeaders = {'User-Agent': None }
 
  # The Navien server.
- navienServer = 'ukst.naviensmartcontrol.com'
+ navienServer = 'uscv2.naviensmartcontrol.com'
  navienWebServer = 'https://' + navienServer
  navienServerSocketPort = 6001
  
@@ -80,7 +92,7 @@ class NavienSmartControl:
 
  def login(self):
   # Login.
-  response = requests.post(NavienSmartControl.navienWebServer + '/mobile_login_check.asp', headers=NavienSmartControl.stealthyHeaders, data={'UserID': self.userID, 'Passwd': self.passwd, 'BundleVersion': '8', 'AutoLogin': '1', 'smartphoneID': '2'})
+  response = requests.post(NavienSmartControl.navienWebServer + '/api/requestDeviceList', headers=NavienSmartControl.stealthyHeaders, data={'userID': self.userID, 'password': self.passwd})
 
   # If an error occurs this will raise it, otherwise it returns the encodedUserID (this is just the BASE64 UserID typically).
   return self.handleResponse(response)
@@ -95,41 +107,37 @@ class NavienSmartControl:
 
  def handleResponse(self, response):
 
-  # The server replies with a pipe separated response.
-  response_status = response.text.split('|')
+  # We need to check for the HTTP response code before attempting to parse the data
+  #print('Response status code=' + str(response.status_code))
+  if response.status_code != 200:
+    print(response.text)
+    response_data = json.loads(response.text)
+    if response_data['msg'] == 'DB_ERROR':
+        # Credentials invalid or some other error
+        raise Exception('Error: ' + response_data['msg'] + ': Login details incorrect. Please note, these are case-sensitive.')
+    else:
+        raise Exception('Error: ' + response_data['msg'])
 
-  # The first value is either a status code or sometimes a raw result.
-  response_status_code = response_status[0]
 
-  if response_status_code == '0':
-   raise Exception('Error: Controller not connected to the Internet server; please check your Wi-Fi network and wait until the connection to the Internet server is restored automatically.')
-  elif response_status_code == '1':
-   raise Exception('Error: Login details incorrect. Please note, these are case-sensitive.')
-  elif response_status_code == '2':
-   raise Exception('Error: The ID you have chosen is already in use.')
-  elif response_status_code == '3':
-   return response_status[1]
-  elif response_status_code == '4':
-   raise Exception('Error: Invalid ID.')
-  elif response_status_code == '9':
-   raise Exception('Error: The Navien TOK account you have chosen is already in use by other users. Try again later.')
-  elif response_status_code == '201':
-   raise Exception('Error: The software is updated automatically and a continuous internet connection is required for this. If the router is not on continually, updates may be missed.')
-  elif response_status_code == '202':
-   if len(response_status) == 2:
-    raise Exception('Error: Service inspection. Please wait until the inspection is done and try again. (Inspection hour:' + response_status[1] + ')')
-   else:
-    raise Exception('Error: Service inspection. Please wait until the inspection is done and try again.')
-  elif response_status_code == '203':
-   raise Exception('Error: Shutting down the service. Thank you for using this service. Closing the current program.')
-  elif response_status_code == '210':
-   raise Exception('Error: This version is too old.')
-  elif response_status_code == '999':
-   raise Exception('Error: Sorry. Please try again later.')
-  else:
-   return response_status
+  # Print what we received
+  #print(response.json())
+  response_data = json.loads(response.text)
+  for key in response_data:
+      #print(key + '->' + response_data[key])
+      if key == 'data':
+          #print(response_data['data'])
+          # json.loads() doesn't parse the json device array into a list for some reason, so we need to do this explicitly
+          gateway_data = json.loads(response_data['data'])
+          #print('There are ' + str(len(gateway_data)) + ' gateways.')
+          #for j in range(len(gateway_data)):
+          #    print('Gateway ' + str(j))
+          #    for key_k in gateway_data[j]:
+          #        print('\t' + key_k + '->' + gateway_data[j][key_k])
+  
+  #print('NickName=' + gateway_data[0]['NickName'] + ', gatewayID=' + gateway_data[0]['GID'])
+  return gateway_data
  
- def connect(self, controllerMACAddress):
+ def connect(self, gatewayID):
 
   # Construct a socket object.
   self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -137,31 +145,68 @@ class NavienSmartControl:
   # Connect to the socket server.
   self.connection.connect((NavienSmartControl.navienServer, NavienSmartControl.navienServerSocketPort))
 
-  # Request the boiler status.
-  self.connection.sendall((self.userID + '$' + 'iPhone1.0' + '$' + controllerMACAddress + '\n').encode())
+  # Request the status.
+  self.connection.sendall((self.userID + '$' + 'iPhone1.0' + '$' + gatewayID).encode())
 
-  # Receive the boiler status.
+  # Receive the status.
   data = self.connection.recv(1024)
 
   # Return the parsed home state data.
-  return self.parseHomeState(data)
+  return self.parseResponse(data)
 
- def parseHomeState(self, data):
+ # Main handler for parsing responses from the binary protocol
+ def parseResponse(self, data):
+  # The response is returned with a fixed header for the first 12 bytes
+  commonResponseColumns = collections.namedtuple('response', ['deviceID', 'countryCD', 'controlType', 'swVersionMajor', 'swVersionMinor'])
+  commonResponseData = commonResponseColumns._make(struct.unpack('8s          B             B                B                  B', data[:12]))
 
-  # The data is returned with a fixed header for the first 42 bytes.
-  homeStateColumns = collections.namedtuple('homeState', ['deviceid','nationCode','hwRev','swRev','netType','controlType','boilerModelType','roomCnt','smsFg','errorCode','hotWaterSetTemp','heatLevel','optionUseFg','currentMode','currentInsideTemp','insideHeatTemp','ondolHeatTemp','repeatReserveHour','repeatReserveMinute','hour24ReserveTime1','hour24ReserveTime2','hour24ReserveTime3','simpleReserveSetTime','simpleReserveSetMinute','operateMode','tempControlType','hotwaterMin','hotwaterMax','ondolHeatMin','ondolHeatMax','insideHeatMin','insideHeatMax','reserve09', 'reserve10'])
-  homeState = homeStateColumns._make(struct.unpack('          8s          B          B       B        B          B               B              B        B         H              B             B            B            B                B                  B               B                B                     B                     B                    B                           B             B                          B                B              B               B             B               B              B               B               B             B            B', data[:42]))
+  print('Device ID: ' + ''.join('%02x' % b for b in commonResponseData.deviceID))
 
-  # If the roomCnt > 1 then the remaining data will be room state information.
-  if len(data) > 42:
-   print('Warning : Extra roomState data found but not implemented in this version.')
+  # Based on the controlType, parse the response accordingly
+  if commonResponseData.controlType == controlType.CHANNEL_INFORMATION.value:
+      retval = self.parseChannelInformationResponse(commonResponseData, data)
+  elif commonResponseData.controlType == controlType.STATE.value:
+      retval = self.parseStateResponse(commonResponseData, data)
+  elif commonResponseData.controlType == controlType.TREND_SAMPLE.value:
+      retval = self.parseTrendSampleResponse(commonResponseData, data)
+  elif commonResponseData.controlType == controlType.TREND_MONTH.value:
+      retval = self.parseTrendMonthResponse(commonResponseData, data)
+  elif commonResponseData.controlType == controlType.YEAR.value:
+      retval = self.parseTrendYearResponse(commonResponseData, data)
+  elif commonResponseData.controlType == controlType.ERROR_CODE.value:
+      retval = self.parseErrorCodeResponse(commonResponseData, data)
+  elif commonResponseData.controlType == controlType.UNKNOWN.value:
+      raise Exception('Error: Unknown controlType. Please restart to retry.')
+  else:
+      raise Exception('An error occurred in the process of retrieving data; please restart to retry.')
+
+  return retval
+
+ # Parse channel information response
+ def parseChannelInformationResponse(self, commonResponseData, data):
+  print('Run away!')
+  quit()
  
-  # These are hardcoded values to watch out for.
-  if data == binascii.unhexlify('444444444400000000000000000000') or data == binascii.unhexlify('04040404040404040404'):
-   raise Exception('An error occurred in the process of retrieving data; please restart to retry.')
+ # Parse state response
+ def parseStateResponse(self, commonResponseData, data):
+  print('Run away!')
 
-  # Return the resulting parsed data.
-  return homeState
+ # Parse trend sample response
+ def parseTrendSampleResponse(self, commonResponseData, data):
+  print('Run away!')
+
+ # Parse trend month response
+ def parseTrendMonthResponse(self, commonResponseData, data):
+  print('Run away!')
+
+ # Parse trend year response
+ def parseTrendYearResponse(self, commonResponseData, data):
+  print('Run away!')
+
+ # Parse error code response
+ def parseErrorCodeResponse(self, commonResponseData, data):
+  print('Run away!')
+
 
  def printHomeState(self, homeState):
   print('Device ID: ' + ':'.join('%02x' % b for b in homeState.deviceid))
