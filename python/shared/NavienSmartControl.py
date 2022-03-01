@@ -438,27 +438,34 @@ class NavienSmartControl:
             print(
                 "\twwsdFlag: "
                 + WWSDFlag(
-                    channelInformation[chan].wwsdFlag & WWSDMask.wwsdFlag.value
+                    (channelInformation[chan].wwsdFlag & WWSDMask.wwsdFlag.value) > 0
                 ).name
             )
             print(
                 "\tcommercialLock: "
-                + WWSDFlag(
-                    channelInformation[chan].wwsdFlag & WWSDMask.commercialLock.value
+                + CommercialLockFlag(
+                    (channelInformation[chan].wwsdFlag & WWSDMask.commercialLock.value)
+                    > 0
                 ).name
             )
             print(
                 "\thotwaterPossibility: "
-                + WWSDFlag(
-                    channelInformation[chan].wwsdFlag
-                    & WWSDMask.hotwaterPossibility.value
+                + NFBWaterFlag(
+                    (
+                        channelInformation[chan].wwsdFlag
+                        & WWSDMask.hotwaterPossibility.value
+                    )
+                    > 0
                 ).name
             )
             print(
                 "\trecirculationPossibility: "
-                + WWSDFlag(
-                    channelInformation[chan].wwsdFlag
-                    & WWSDMask.recirculationPossibility.value
+                + RecirculationFlag(
+                    (
+                        channelInformation[chan].wwsdFlag
+                        & WWSDMask.recirculationPossibility.value
+                    )
+                    > 0
                 ).name
             )
             print(
