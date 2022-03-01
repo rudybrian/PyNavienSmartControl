@@ -121,6 +121,13 @@ class WWSDFlag(enum.Enum):
     FAIL = True
 
 
+class WWSDMask(enum.Enum):
+    wwsdFlag = 0x01
+    commercialLock = 0x02
+    hotwaterPossibility = 0x04
+    recirculationPossibility = 0x08
+
+
 class CommercialLockFlag(enum.Enum):
     OK = False
     LOCK = True
@@ -427,13 +434,39 @@ class NavienSmartControl:
                 "\tHeating Control: "
                 + HeatingControl(channelInformation[chan].heatingControl).name
             )
-            # Do some stuff with the wwsdFlag value
+            # Do some different stuff with the wwsdFlag value
+            print(
+                "\twwsdFlag: "
+                + WWSDFlag(
+                    channelInformation[chan].wwsdFlag & WWSDMask.wwsdFlag.value
+                ).name
+            )
+            print(
+                "\tcommercialLock: "
+                + WWSDFlag(
+                    channelInformation[chan].wwsdFlag & WWSDMask.commercialLock.value
+                ).name
+            )
+            print(
+                "\thotwaterPossibility: "
+                + WWSDFlag(
+                    channelInformation[chan].wwsdFlag
+                    & WWSDMask.hotwaterPossibility.value
+                ).name
+            )
+            print(
+                "\trecirculationPossibility: "
+                + WWSDFlag(
+                    channelInformation[chan].wwsdFlag
+                    & WWSDMask.recirculationPossibility.value
+                ).name
+            )
             print(
                 "\tHigh Temperature: "
                 + HighTemperature(channelInformation[chan].highTemperature).name
             )
             print(
-                "\tuse Warm Water: "
+                "\tUse Warm Water: "
                 + OnOFFFlag(channelInformation[chan].useWarmWater).name
             )
 
