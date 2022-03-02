@@ -195,6 +195,7 @@ class NavienSmartControl:
         # If an error occurs this will raise it, otherwise it returns the gateway list.
         return self.handleResponse(response)
 
+    # HTTP response handler
     def handleResponse(self, response):
 
         # We need to check for the HTTP response code before attempting to parse the data
@@ -212,22 +213,14 @@ class NavienSmartControl:
             else:
                 raise Exception("Error: " + response_data["msg"])
 
-        # Print what we received
-        # print(response.json())
         response_data = json.loads(response.text)
-        for key in response_data:
-            # print(key + '->' + response_data[key])
-            if key == "data":
-                # print(response_data['data'])
-                # json.loads() doesn't parse the json device array into a list for some reason, so we need to do this explicitly
-                gateway_data = json.loads(response_data["data"])
-                # print('There are ' + str(len(gateway_data)) + ' gateways.')
-                # for j in range(len(gateway_data)):
-                #    print('Gateway ' + str(j))
-                #    for key_k in gateway_data[j]:
-                #        print('\t' + key_k + '->' + gateway_data[j][key_k])
 
-        # print('NickName=' + gateway_data[0]['NickName'] + ', gatewayID=' + gateway_data[0]['GID'])
+        try:
+            response_data["data"]
+            gateway_data = json.loads(response_data["data"])
+        except NameError:
+            raise Exception("Error: Unexpected JSON response to gateway list request.")
+
         return gateway_data
 
     def connect(self, gatewayID):
@@ -377,7 +370,60 @@ class NavienSmartControl:
 
     # Parse state response
     def parseStateResponse(self, commonResponseData, data):
+        stateResponseColumns = collections.namedtuple(
+            "response",
+            [
+                "controllerVersion",
+                "pannelVersion",
+                "deviceSorting",
+                "deviceCount",
+                "currentChannel",
+                "deviceNumber",
+                "errorCD",
+                "operationDeviceNumber",
+                "averageCalorimeter",
+                "gasInstantUse",
+                "gasAccumulatedUse",
+                "hotWaterSettingTemperature",
+                "hotWaterCurrentTemperature",
+                "hotWaterFlowRate",
+                "hotWaterTemperature",
+                "heatSettingTemperature",
+                "currentWorkingFluidTemperature",
+                "currentReturnWaterTemperature",
+                "powerStatus",
+                "heatStatus",
+                "useOnDemand",
+                "weeklyControl",
+                "totalDaySequence",
+            ],
+        )
+        stateResponseData = stateResponseColumns._make(
+            struct.unpack(
+                "2s 2s B B B B 2s B B 2s 4s B B 2s B B B B B B B B B", data[12:43]
+            )
+        )
+        print(
+            "controllerVersion: "
+            + "".join("%02x" % b for b in stateResponseData.controllerVersion)
+        )
+
+        # Load each of the 7 daily sets of day sequences
+        daySequenceResponseColumns = collections.namedtuple(
+            "response", ["hour", "minute", "isOnOFF"]
+        )
+
+        # for i in range(7):
+        #    # we need to add some test conditions, and then selective run an inner loop x times
+        #    daySequenceIndex = 0
+        #    daySequenceResponseData = daySequenceResponseColumns._make(
+        #        struct.unpack(
+        #            "B B B", data[daySequenceIndex:daySequenceIndex + 3],
+        #        )
+        #    )
+
         print("Run away!")
+        quit()
 
     # Parse trend sample response
     def parseTrendSampleResponse(self, commonResponseData, data):
@@ -618,6 +664,202 @@ class NavienSmartControl:
 
     def getTemperatureFromByte(self, temperatureByte):
         return float((temperatureByte >> 1) + (0.5 if temperatureByte & 1 else 0))
+
+    # Send a request to the binary API
+    def sendRequest(
+        self,
+        gatewayID,
+        currentControlChannel,
+        deviceNumber,
+        controlSorting,
+        infoItem,
+        controlItem,
+        controlValue,
+        WeeklyDay,
+    ):
+        requestHeader = {
+            "stx": 0x07,
+            "did": 0x99,
+            "reserve": 0x00,
+            "cmd": 0xA6,
+            "dataLength": 0x37,
+            "dSid": 0x00,
+        }
+        sendData = bytearray(
+            [
+                requestHeader["stx"],
+                requestHeader["did"],
+                requestHeader["reserve"],
+                requestHeader["cmd"],
+                requestHeader["dataLength"],
+                requestHeader["dSid"],
+            ]
+        )
+        sendData.extend(gatewayID)
+        sendData.extend(
+            [
+                0x01,  # commandCount
+                currentControlChannel,
+                deviceNumber,
+                controlSorting,
+                infoItem,
+                controlItem,
+                controlValue,
+            ]
+        )
+        sendData.extend(
+            [
+                WeeklyDay["WeeklyDay"],
+                WeeklyDay["WeeklyCount"],
+                WeeklyDay["1_Hour"],
+                WeeklyDay["1_Minute"],
+                WeeklyDay["1_Flag"],
+                WeeklyDay["2_Hour"],
+                WeeklyDay["2_Minute"],
+                WeeklyDay["2_Flag"],
+                WeeklyDay["3_Hour"],
+                WeeklyDay["3_Minute"],
+                WeeklyDay["3_Flag"],
+                WeeklyDay["4_Hour"],
+                WeeklyDay["4_Minute"],
+                WeeklyDay["4_Flag"],
+                WeeklyDay["5_Hour"],
+                WeeklyDay["5_Minute"],
+                WeeklyDay["5_Flag"],
+                WeeklyDay["6_Hour"],
+                WeeklyDay["6_Minute"],
+                WeeklyDay["6_Flag"],
+                WeeklyDay["7_Hour"],
+                WeeklyDay["7_Minute"],
+                WeeklyDay["7_Flag"],
+                WeeklyDay["8_Hour"],
+                WeeklyDay["8_Minute"],
+                WeeklyDay["8_Flag"],
+                WeeklyDay["9_Hour"],
+                WeeklyDay["9_Minute"],
+                WeeklyDay["9_Flag"],
+                WeeklyDay["10_Hour"],
+                WeeklyDay["10_Minute"],
+                WeeklyDay["10_Flag"],
+            ]
+        )
+
+        # We should ensure that the socket is still connected, and abort if not
+        self.connection.sendall(sendData)
+
+        # Receive the status.
+        data = self.connection.recv(1024)
+        return self.parseResponse(data)
+
+    # Helper function to initialize and populate the WeeklyDay dict
+    def initWeeklyDay(self):
+        weeklyDay = {}
+        weeklyDay["WeeklyDay"] = 0x00
+        weeklyDay["WeeklyCount"] = 0x00
+        for i in range(1, 11):
+            weeklyDay[str(i) + "_Hour"] = 0x00
+            weeklyDay[str(i) + "_Minute"] = 0x00
+            weeklyDay[str(i) + "_Flag"] = 0x00
+        return weeklyDay
+
+    # ----- Convenience methods for sending requests ----- #
+
+    # Send state request
+    def sendStateRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            0x01,
+            ControlType.STATE.value,
+            0x00,
+            0x00,
+            self.initWeeklyDay(),
+        )
+
+    # Send channel information request
+    def sendChannelInfoRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        return
+
+    # Send trend sample request
+    def sendTrendSampleRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        return
+
+    # Send trend month request
+    def sendTrendMonthRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        return
+
+    # Send trend year request
+    def sendTrendYearRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        return
+
+    # Send device power control request
+    def sendPowerControlRequest(
+        self, gatewayID, currentControlChannel, deviceNumber, powerState
+    ):
+        return
+
+    # Send device heat control request
+    def sendHeatControlRequest(
+        self,
+        gatewayID,
+        currentControlChannel,
+        deviceNumber,
+        channelInformation,
+        heatVal,
+    ):
+        return
+
+    # Send device water temperature control request
+    def sendWaterTempControlRequest(
+        self,
+        gatewayID,
+        currentControlChannel,
+        deviceNumber,
+        channelInformation,
+        heatVal,
+    ):
+        return
+
+    # Send device heatting water temperature control request
+    def sendHeattingWaterTempControlRequest(
+        self,
+        gatewayID,
+        currentControlChannel,
+        deviceNumber,
+        channelInformation,
+        heatVal,
+    ):
+        return
+
+    # Send device on demand control request
+    def sendOnDemandControlRequest(
+        self,
+        gatewayID,
+        currentControlChannel,
+        deviceNumber,
+        channelInformation,
+        onDemandState,
+    ):
+        return
+
+    # Send device recirculation control request
+    def sendRecirculationControlRequest(
+        self,
+        gatewayID,
+        currentControlChannel,
+        deviceNumber,
+        channelInformation,
+        recirculationState,
+    ):
+        return
+
+    # Send request to set weekly schedule
+    def sendDeviceControlWeeklyRequest(
+        self, gatewayID, currentControlChannel, deviceNumber, WeeklyDay
+    ):
+        # sendRequest(self, gatewayID, currentControlChannel, deviceNumber, controlSorting, infoItem, controlItem, controlValue, WeeklyDay)
+        return
 
     def setOperationMode(
         self, homeState, operateMode, value01, value02, value03, value04, value05

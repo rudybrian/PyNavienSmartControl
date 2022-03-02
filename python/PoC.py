@@ -9,6 +9,8 @@ from shared.NavienSmartControl import NavienSmartControl
 # The credentials are loaded from a separate file.
 import json
 
+import binascii
+
 # Load credentials.
 with open("credentials.json", "r") as in_file:
     credentials = json.load(in_file)
@@ -38,10 +40,13 @@ channelInfo = navienSmartControl.connect(gateways[0]["GID"])
 # Print the channel info
 navienSmartControl.printChannelInformation(channelInfo)
 
-quit()
+# Request the state for the first device on the third serial port
+state = navienSmartControl.sendStateRequest(
+    binascii.unhexlify(gateways[0]["GID"]), 0x03, 0x01
+)
 
 # Print out the current status.
-#navienSmartControl.printHomeState(homeState)
+# navienSmartControl.printHomeState(homeState)
 
 # Change the temperature.
 # navienSmartControl.setInsideHeat(homeState, 19.0)
