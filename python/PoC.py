@@ -45,8 +45,8 @@ state = navienSmartControl.sendStateRequest(
     binascii.unhexlify(gateways[0]["GID"]), 0x03, 0x01
 )
 
-# Print out the current status.
-# navienSmartControl.printHomeState(homeState)
+# Print out the current state
+navienSmartControl.printState(state, channelInfo["3"].deviceTempFlag)
 
 # Change the temperature.
 # navienSmartControl.setInsideHeat(homeState, 19.0)

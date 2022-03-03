@@ -169,6 +169,17 @@ class TempControlType(enum.IntFlag):
     WATERMODE = 7
 
 
+class AutoVivification(dict):
+    """Implementation of perl's autovivification feature."""
+
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            value = self[item] = type(self)()
+            return value
+
+
 class NavienSmartControl:
 
     # This prevents the requests module from creating its own user-agent.
@@ -413,17 +424,51 @@ class NavienSmartControl:
             "response", ["hour", "minute", "isOnOFF"]
         )
 
-        # for i in range(7):
-        #    # we need to add some test conditions, and then selective run an inner loop x times
-        #    daySequenceIndex = 0
-        #    daySequenceResponseData = daySequenceResponseColumns._make(
-        #        struct.unpack(
-        #            "B B B", data[daySequenceIndex:daySequenceIndex + 3],
-        #        )
-        #    )
-
-        print("Run away!")
-        quit()
+        daySequences = AutoVivification()
+        for i in range(7):
+            i2 = i * 32
+            i3 = i2 + 43
+            daySequences[str(i)]["dayOfWeek"] = data[i3]
+            weeklyTotalCount = data[i2 + 44]
+            for i4 in range(weeklyTotalCount):
+                i5 = i4 * 3
+                daySequences[str(i)]["daySequence"][
+                    str(i4)
+                ] = daySequenceResponseColumns._make(
+                    struct.unpack("B B B", data[i2 + 45 + i5 : i2 + 45 + i5 + 3])
+                )
+        if len(data) > 271:
+            stateResponseColumns2 = collections.namedtuple(
+                "response",
+                [
+                    "hotWaterAverageTemperature",
+                    "inletAverageTemperature",
+                    "supplyAverageTemperature",
+                    "returnAverageTemperature",
+                    "recirculationSettingTemperature",
+                    "recirculationCurrentTemperature",
+                ],
+            )
+            stateResponseData2 = stateResponseColumns2._make(
+                struct.unpack("B B B B B B", data[267:274])
+            )
+        else:
+            stateResponseColumns2 = collections.namedtuple(
+                "response",
+                [
+                    "hotWaterAverageTemperature",
+                    "inletAverageTemperature",
+                    "supplyAverageTemperature",
+                    "returnAverageTemperature",
+                ],
+            )
+            stateResponseData2 = stateResponseColumns2._make(
+                struct.unpack("B B B B", data[267:272])
+            )
+        tmpDaySequences = {"daySequences": daySequences}
+        result = dict(stateResponseData._asdict(), **tmpDaySequences)
+        result.update(stateResponseData2._asdict())
+        return result
 
     # Parse trend sample response
     def parseTrendSampleResponse(self, commonResponseData, data):
@@ -522,7 +567,101 @@ class NavienSmartControl:
                 "\tUse Warm Water: "
                 + OnOFFFlag(channelInformation[chan].useWarmWater).name
             )
+            # These values are ony populated with firmware version > 1500
+            if hasattr(
+                channelInformation[chan], "minimumSettingRecirculationTemperature"
+            ):
+                print(
+                    "\tMinimum Recirculation Temperature: "
+                    + channelInformation[chan].minimumSettingRecirculationTemperature
+                )
+                print(
+                    "\tMaximum Recirculation Temperature: "
+                    + channelInformation[chan].maximumSettingRecirculationTemperature
+                )
 
+    # Print State response data
+    def printState(self, stateData, temperatureType):
+        print(json.dumps(stateData, indent=2, default=str))
+        print(
+            "Controller Version: "
+            + "".join("%02x" % b for b in stateData["controllerVersion"])
+        )
+        print(
+            "Panel Version: " + "".join("%02x" % b for b in stateData["pannelVersion"])
+        )
+        print("Device Model Type: " + DeviceSorting(stateData["deviceSorting"]).name)
+        print("Device Count: " + str(stateData["deviceCount"]))
+        print("Current Channel: " + str(stateData["currentChannel"]))
+        print("Device Number: " + str(stateData["deviceNumber"]))
+        errorCD = (stateData["errorCD"][0] & 0xFF) + (
+            stateData["errorCD"][1] & 0xFF
+        ) * 256
+        if errorCD == 0:
+            errorCD = "Normal"
+        print("Error Code: " + str(errorCD))
+        print("Operation Device Number: " + str(stateData["operationDeviceNumber"]))
+        if temperatureType == TemperatureType.CELSIUS.value:
+            print(
+                "Average Calorimeter: "
+                + str(stateData["averageCalorimeter"] / 2.0)
+                + "%"
+            )
+            print(
+                "Current Gas Usage: "
+                + str((stateData["gasInstantUse"] * 100) / 10.0)
+                + "kcal"
+            )
+            print(
+                "Total Gas Usage: "
+                + str(stateData["gasAccumulatedUse"] / 10.0)
+                + "m\u00b2"
+            )
+            print(
+                "Hot Water Setting Temperature: "
+                + str(stateData["hotWaterSettingTemperature"] / 2.0)
+                + u"\u00b0"
+                + "C"
+            )
+            print(
+                "Hot Water Current Temperature: "
+                + str(stateData["hotWaterCurrentTemperature"] / 2.0)
+                + u"\u00b0"
+                + "C"
+            )
+            print(
+                "Hot Water Flow Rate: "
+                + str(stateData["hotWaterFlowRate"] / 10.0)
+                + "LPM"
+            )
+            print(
+                "Inlet Temperature: "
+                + str(stateData["hotWaterTemperature"] / 2.0)
+                + u"\u00b0"
+                + "C"
+            )
+            print(
+                "Current Working Fluid Temperature: "
+                + str(stateData["currentWorkingFluidTemperature"] / 2.0)
+                + u"\u00b0"
+                + "C"
+            )
+            print(
+                "Current Return Water Temperature: "
+                + str(stateData["currentReturnWaterTemperature"] / 2.0)
+                + u"\u00b0"
+                + "C"
+            )
+        elif temperatureType == TemperatureType.FAHRENHEIT.value:
+            print(
+                "Average Calorimeter: "
+                + str(stateData["averageCalorimeter"] / 2.0)
+                + "%"
+            )
+        else:
+            raise Exception("Error: Invalid temperatureType.")
+
+    # leaving this here for reference, but will be removed
     def printHomeState(self, homeState):
         print("Device ID: " + ":".join("%02x" % b for b in homeState.deviceid))
         print("Country Code: " + str(homeState.nationCode))
