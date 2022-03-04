@@ -6,6 +6,9 @@ from __future__ import print_function
 # The NavienSmartControl code is in a library.
 from shared.NavienSmartControl import NavienSmartControl
 
+# Import select enums from the NavienSmartControl library
+from shared.NavienSmartControl import DeviceSorting
+
 # The credentials are loaded from a separate file.
 import json
 
@@ -34,19 +37,28 @@ for i in range(len(gateways)):
     print("Server TCP Port Number: " + gateways[i]["ServerPort"])
     print("---------------------------\n")
 
-# Connect to the socket.
-channelInfo = navienSmartControl.connect(gateways[0]["GID"])
+    # Connect to the socket.
+    channelInfo = navienSmartControl.connect(gateways[i]["GID"])
 
-# Print the channel info
-navienSmartControl.printChannelInformation(channelInfo)
+    # Print the channel info
+    navienSmartControl.printChannelInformation(channelInfo)
 
-# Request the state for the first device on the third serial port
-state = navienSmartControl.sendStateRequest(
-    binascii.unhexlify(gateways[0]["GID"]), 0x03, 0x01
-)
+    print()
+    # Request the state for each connected device
+    for chan in channelInfo:
+        if (
+            DeviceSorting(channelInfo[chan].deviceSorting).name
+            != DeviceSorting.NO_DEVICE.name
+        ):
+            print("Channel " + chan + " Info:")
+            for deviceNumber in range(1, channelInfo[chan].deviceCount + 1):
+                print("Device: " + str(deviceNumber))
+                state = navienSmartControl.sendStateRequest(
+                    binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber
+                )
 
-# Print out the current state
-navienSmartControl.printState(state, channelInfo["3"].deviceTempFlag)
+                # Print out the current state
+                navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
 
 # Change the temperature.
 # navienSmartControl.setInsideHeat(homeState, 19.0)
