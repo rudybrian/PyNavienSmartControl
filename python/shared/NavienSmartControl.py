@@ -154,6 +154,17 @@ class OnOFFFlag(enum.Enum):
     OFF = 2
 
 
+class DayOfWeek(enum.Enum):
+    UN_KNOWN = 0
+    SUN = 1
+    MON = 2
+    TUE = 3
+    WED = 4
+    THU = 5
+    FRI = 6
+    SAT = 7
+
+
 class TempControlType(enum.IntFlag):
 
     # 3rd bit.
@@ -601,208 +612,372 @@ class NavienSmartControl:
             errorCD = "Normal"
         print("Error Code: " + str(errorCD))
         print("Operation Device Number: " + str(stateData["operationDeviceNumber"]))
+        print(
+            "Average Calorimeter: " + str(stateData["averageCalorimeter"] / 2.0) + " %"
+        )
         if temperatureType == TemperatureType.CELSIUS.value:
-            print(
-                "Average Calorimeter: "
-                + str(stateData["averageCalorimeter"] / 2.0)
-                + "%"
-            )
+            if stateData["deviceSorting"] in [
+                DeviceSorting.NFC.value,
+                DeviceSorting.NCB_H.value,
+                DeviceSorting.NFB.value,
+                DeviceSorting.NVW.value,
+            ]:
+                GIUFactor = 100
+            else:
+                GIUFactor = 10
+            # This needs to be summed for cascaded units
             print(
                 "Current Gas Usage: "
-                + str((stateData["gasInstantUse"] * 100) / 10.0)
-                + "kcal"
+                + str(
+                    (
+                        (
+                            (stateData["gasInstantUse"][0] & 0xFF)
+                            + (stateData["gasInstantUse"][1] & 0xFF) * 256
+                        )
+                        * GIUFactor
+                    )
+                    / 10.0
+                )
+                + " kcal"
             )
+            # This needs to be summed for cascaded units
             print(
                 "Total Gas Usage: "
-                + str(stateData["gasAccumulatedUse"] / 10.0)
-                + "m\u00b2"
+                + str(self.bigHexToInt(stateData["gasAccumulatedUse"]) / 10.0)
+                + " m\u00b2"
             )
-            print(
-                "Hot Water Setting Temperature: "
-                + str(stateData["hotWaterSettingTemperature"] / 2.0)
-                + u"\u00b0"
-                + "C"
-            )
-            print(
-                "Hot Water Current Temperature: "
-                + str(stateData["hotWaterCurrentTemperature"] / 2.0)
-                + u"\u00b0"
-                + "C"
-            )
-            print(
-                "Hot Water Flow Rate: "
-                + str(stateData["hotWaterFlowRate"] / 10.0)
-                + "LPM"
-            )
-            print(
-                "Inlet Temperature: "
-                + str(stateData["hotWaterTemperature"] / 2.0)
-                + u"\u00b0"
-                + "C"
-            )
-            print(
-                "Current Working Fluid Temperature: "
-                + str(stateData["currentWorkingFluidTemperature"] / 2.0)
-                + u"\u00b0"
-                + "C"
-            )
-            print(
-                "Current Return Water Temperature: "
-                + str(stateData["currentReturnWaterTemperature"] / 2.0)
-                + u"\u00b0"
-                + "C"
-            )
+            # only print these if DHW is in use
+            if stateData["deviceSorting"] in [
+                DeviceSorting.NPE.value,
+                DeviceSorting.NPN.value,
+                DeviceSorting.NPE2.value,
+                DeviceSorting.NCB.value,
+                DeviceSorting.NFC.value,
+                DeviceSorting.NCB_H.value,
+                DeviceSorting.CAS_NPE.value,
+                DeviceSorting.CAS_NPN.value,
+                DeviceSorting.CAS_NPE2.value,
+                DeviceSorting.NFB.value,
+                DeviceSorting.NVW.value,
+                DeviceSorting.CAS_NFB.value,
+                DeviceSorting.CAS_NVW.value,
+            ]:
+                print(
+                    "Hot Water Setting Temperature: "
+                    + str(stateData["hotWaterSettingTemperature"] / 2.0)
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
+                if str(DeviceSorting(stateData["deviceSorting"]).name).startswith(
+                    "CAS_"
+                ):
+                    print(
+                        "Hot Water Average Temperature: "
+                        + str(stateData["hotWaterAverageTemperature"] / 2.0)
+                        + " "
+                        + u"\u00b0"
+                        + "C"
+                    )
+                    print(
+                        "Inlet Average Temperature: "
+                        + str(stateData["inletAverageTemperature"] / 2.0)
+                        + " "
+                        + u"\u00b0"
+                        + "C"
+                    )
+                print(
+                    "Hot Water Current Temperature: "
+                    + str(stateData["hotWaterCurrentTemperature"] / 2.0)
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
+                print(
+                    "Hot Water Flow Rate: "
+                    + str(
+                        (
+                            (stateData["hotWaterFlowRate"][0] & 0xFF)
+                            + (stateData["hotWaterFlowRate"][1] & 0xFF) * 256
+                        )
+                        / 10.0
+                    )
+                    + " LPM"
+                )
+                print(
+                    "Inlet Temperature: "
+                    + str(stateData["hotWaterTemperature"] / 2.0)
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
+                if "recirculationSettingTemperature" in stateData:
+                    print(
+                        "Recirculation Setting Temperature: "
+                        + str(stateData["recirculationSettingTemperature"] / 2.0)
+                        + " "
+                        + u"\u00b0"
+                        + "C"
+                    )
+                    print(
+                        "Recirculation Current Temperature: "
+                        + str(stateData["recirculationCurrentTemperature"] / 2.0)
+                        + " "
+                        + u"\u00b0"
+                        + "C"
+                    )
+            # Only print these if CH is in use
+            if stateData["deviceSorting"] in [
+                DeviceSorting.NHB.value,
+                DeviceSorting.CAS_NHB.value,
+                DeviceSorting.NFB.value,
+                DeviceSorting.NVW.value,
+                DeviceSorting.CAS_NFB.value,
+                DeviceSorting.CAS_NVW.value,
+                DeviceSorting.NCB.value,
+                DeviceSorting.NFC.value,
+                DeviceSorting.NCB_H.value,
+            ]:
+                # Don't show the setting for cascaded devices, as it isn't applicable
+                print(
+                    "Heat Setting Temperature: "
+                    + str(stateData["heatSettingTemperature"] / 2.0)
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
+                if str(DeviceSorting(stateData["deviceSorting"]).name).startswith(
+                    "CAS_"
+                ):
+                    print(
+                        "Supply Average Temperature: "
+                        + str(stateData["supplyAverageTemperature"] / 2.0)
+                        + " "
+                        + u"\u00b0"
+                        + "C"
+                    )
+                    print(
+                        "Return Average Temperature: "
+                        + str(stateData["returnAverageTemperature"] / 2.0)
+                        + " "
+                        + u"\u00b0"
+                        + "C"
+                    )
+                print(
+                    "Current Supply Water Temperature: "
+                    + str(stateData["currentWorkingFluidTemperature"] / 2.0)
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
+                print(
+                    "Current Return Water Temperature: "
+                    + str(stateData["currentReturnWaterTemperature"] / 2.0)
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
         elif temperatureType == TemperatureType.FAHRENHEIT.value:
+            if stateData["deviceSorting"] in [
+                DeviceSorting.NFC.value,
+                DeviceSorting.NCB_H.value,
+                DeviceSorting.NFB.value,
+                DeviceSorting.NVW.value,
+            ]:
+                GIUFactor = 10
+            else:
+                GIUFactor = 1
+            # This needs to be summed for cascaded units
             print(
-                "Average Calorimeter: "
-                + str(stateData["averageCalorimeter"] / 2.0)
-                + "%"
+                "Current Gas Usage: "
+                + str(
+                    (
+                        (stateData["gasInstantUse"][0] & 0xFF)
+                        + (stateData["gasInstantUse"][1] & 0xFF) * 256
+                    )
+                    * GIUFactor
+                    * 3.968
+                )
+                + " BTU"
             )
-        else:
-            raise Exception("Error: Invalid temperatureType.")
-
-    # leaving this here for reference, but will be removed
-    def printHomeState(self, homeState):
-        print("Device ID: " + ":".join("%02x" % b for b in homeState.deviceid))
-        print("Country Code: " + str(homeState.nationCode))
-        print("Hardware Revision: V" + str(homeState.hwRev))
-        print("Software Version: V" + str(homeState.swRev) + ".0")
-        print("Network Type: " + str(homeState.netType))
-        print("Control Type?: " + str(homeState.controlType))
-        print("Boiler Model Type: " + str(homeState.boilerModelType))
-        print("Room Controllers: " + str(homeState.roomCnt))
-        print("smsFg?: " + str(homeState.smsFg))
-        print(
-            "Error: "
-            + ("No Error" if homeState.errorCode == 0 else homeState.errorCode)
-        )
-        print(
-            "Hot Water Set Temperature: "
-            + str(self.getTemperatureFromByte(homeState.hotWaterSetTemp))
-            + " °C"
-        )
-        print(
-            "Heat Intensity Type: "
-            + ["Unknown", "Low", "Medium", "High"][homeState.heatLevel]
-        )
-        print(
-            "Option Use Flags: "
-            + bin(homeState.optionUseFg)
-            + (
-                " (Usable 24 Hour Reserve)"
-                if homeState.optionUseFg & 128 == 128
-                else ""
-            )
-        )
-        print()
-
-        print("Current Mode: ", end="")
-        if homeState.currentMode == ModeState.POWER_OFF.value:
-            print("Powered Off")
-        elif homeState.currentMode == ModeState.GOOUT_ON.value:
-            print("Holiday Mode")
-        elif homeState.currentMode == ModeState.INSIDE_HEAT.value:
-            print("Room Temperature Control")
-        elif homeState.currentMode == ModeState.ONDOL_HEAT.value:
-            print("Central Heating Control")
-        elif homeState.currentMode == ModeState.SIMPLE_RESERVE.value:
-            print("Heating Inteval")
-        elif homeState.currentMode == ModeState.CIRCLE_RESERVE.value:
-            print("24 Hour Program")
-        elif homeState.currentMode == ModeState.HOTWATER_ON.value:
-            print("Hot Water Only")
-        else:
-            print(str(homeState.currentMode))
-
-        print(
-            "Current Room Temperature: "
-            + str(self.getTemperatureFromByte(homeState.currentInsideTemp))
-            + " °C"
-        )
-        print(
-            "Inside Heating Temperature: "
-            + str(self.getTemperatureFromByte(homeState.insideHeatTemp))
-            + " °C"
-        )
-        print(
-            "Central Heating Temperature: "
-            + str(self.getTemperatureFromByte(homeState.ondolHeatTemp))
-            + " °C"
-        )
-        print()
-        print(
-            "Heating Timer Interval: Every "
-            + str(homeState.repeatReserveHour)
-            + " hour(s)"
-        )
-        print(
-            "Heating Timer Duration: "
-            + str(homeState.repeatReserveMinute)
-            + " minute(s)"
-        )
-        print()
-        print("24Hour Schedule (00-08h): " + bin(homeState.hour24ReserveTime1))
-        print("24Hour Schedule (09-16h): " + bin(homeState.hour24ReserveTime2))
-        print("24Hour Schedule (17-24h): " + bin(homeState.hour24ReserveTime3))
-        print()
-        print("Simple Reserve Set Time: " + str(homeState.simpleReserveSetTime))
-        print("Simple Reserve Set Minute: " + str(homeState.simpleReserveSetMinute))
-        print()
-        print(
-            "Operation Mode Flags: "
-            + bin(homeState.operateMode)
-            + (" (Active)" if homeState.operateMode & OperateMode.ACTIVE.value else "")
-        )
-        print()
-        print("Temperature Control Supported Types: " + bin(homeState.tempControlType))
-        if homeState.tempControlType & TempControlType.POINTINSIDE:
-            print(" (POINTINSIDE)")
-        if homeState.tempControlType & TempControlType.POINTONDOL:
-            print(" (POINTONDOL)")
-        if homeState.tempControlType & TempControlType.POINTWATER:
-            print(" (POINTWATER)")
-        if homeState.tempControlType & TempControlType.WATERMODE.value > 0:
+            # This needs to be summed for cascaded units
             print(
-                " (WATERMODE_"
-                + str(homeState.tempControlType & TempControlType.WATERMODE.value)
-                + ") = "
-                + ["Unknown", "Stepped", "Temperature"][
-                    (homeState.tempControlType & TempControlType.WATERMODE.value) - 1
-                ]
-                + " Controlled"
+                "Total Gas Usage: "
+                + str(
+                    (self.bigHexToInt(stateData["gasAccumulatedUse"]) * 35.314667)
+                    / 10.0
+                )
+                + " ft\u00b3"
             )
-        print()
+            # only print these if DHW is in use
+            if stateData["deviceSorting"] in [
+                DeviceSorting.NPE.value,
+                DeviceSorting.NPN.value,
+                DeviceSorting.NPE2.value,
+                DeviceSorting.NCB.value,
+                DeviceSorting.NFC.value,
+                DeviceSorting.NCB_H.value,
+                DeviceSorting.CAS_NPE.value,
+                DeviceSorting.CAS_NPN.value,
+                DeviceSorting.CAS_NPE2.value,
+                DeviceSorting.NFB.value,
+                DeviceSorting.NVW.value,
+                DeviceSorting.CAS_NFB.value,
+                DeviceSorting.CAS_NVW.value,
+            ]:
+                print(
+                    "Hot Water Setting Temperature: "
+                    + str(stateData["hotWaterSettingTemperature"])
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+                if str(DeviceSorting(stateData["deviceSorting"]).name).startswith(
+                    "CAS_"
+                ):
+                    print(
+                        "Hot Water Average Temperature: "
+                        + str(stateData["hotWaterAverageTemperature"])
+                        + " "
+                        + u"\u00b0"
+                        + "F"
+                    )
+                    print(
+                        "Inlet Average Temperature: "
+                        + str(stateData["inletAverageTemperature"])
+                        + " "
+                        + u"\u00b0"
+                        + "F"
+                    )
+                print(
+                    "Hot Water Current Temperature: "
+                    + str(stateData["hotWaterCurrentTemperature"])
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+                print(
+                    "Hot Water Flow Rate: "
+                    + str(
+                        (
+                            (
+                                (stateData["hotWaterFlowRate"][0] & 0xFF)
+                                + (stateData["hotWaterFlowRate"][1] & 0xFF) * 256
+                            )
+                            / 3.785
+                        )
+                        / 10.0
+                    )
+                    + " GPM"
+                )
+                print(
+                    "Inlet Temperature: "
+                    + str(stateData["hotWaterTemperature"])
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+                if "recirculationSettingTemperature" in stateData:
+                    print(
+                        "Recirculation Setting Temperature: "
+                        + str(stateData["recirculationSettingTemperature"])
+                        + " "
+                        + u"\u00b0"
+                        + "F"
+                    )
+                    print(
+                        "Recirculation Current Temperature: "
+                        + str(stateData["recirculationCurrentTemperature"])
+                        + " "
+                        + u"\u00b0"
+                        + "F"
+                    )
+            # Only print these if CH is in use
+            if stateData["deviceSorting"] in [
+                DeviceSorting.NHB.value,
+                DeviceSorting.CAS_NHB.value,
+                DeviceSorting.NFB.value,
+                DeviceSorting.NVW.value,
+                DeviceSorting.CAS_NFB.value,
+                DeviceSorting.CAS_NVW.value,
+                DeviceSorting.NCB.value,
+                DeviceSorting.NFC.value,
+                DeviceSorting.NCB_H.value,
+            ]:
+                # Don't show the setting for cascaded devices, as it isn't applicable
+                print(
+                    "Heat Setting Temperature: "
+                    + str(stateData["heatSettingTemperature"])
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+                if str(DeviceSorting(stateData["deviceSorting"]).name).startswith(
+                    "CAS_"
+                ):
+                    print(
+                        "Supply Average Temperature: "
+                        + str(stateData["supplyAverageTemperature"])
+                        + " "
+                        + u"\u00b0"
+                        + "F"
+                    )
+                    print(
+                        "Return Average Temperature: "
+                        + str(stateData["returnAverageTemperature"])
+                        + " "
+                        + u"\u00b0"
+                        + "F"
+                    )
+                print(
+                    "Current Supply Water Temperature: "
+                    + str(stateData["currentWorkingFluidTemperature"])
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+                print(
+                    "Current Return Water Temperature: "
+                    + str(stateData["currentReturnWaterTemperature"])
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+        else:
+            raise Exception("Error: Invalid temperatureType")
 
-        print(
-            "Hot Water Temperature Supported Range: "
-            + str(self.getTemperatureFromByte(homeState.hotwaterMin))
-            + " °C - "
-            + str(self.getTemperatureFromByte(homeState.hotwaterMax))
-            + " °C"
-        )
-        print(
-            "Central Heating Temperature Supported Range: "
-            + str(self.getTemperatureFromByte(homeState.ondolHeatMin))
-            + " °C - "
-            + str(self.getTemperatureFromByte(homeState.ondolHeatMax))
-            + " °C"
-        )
-        print(
-            "Room Temperature Supported Range: "
-            + str(self.getTemperatureFromByte(homeState.insideHeatMin))
-            + " °C - "
-            + str(self.getTemperatureFromByte(homeState.insideHeatMax))
-            + " °C"
-        )
-        print()
-        print("Reserved 09: " + str(homeState.reserve09))
-        print("Reserved 10: " + str(homeState.reserve10))
+        print("Power Status: " + OnOFFFlag(stateData["powerStatus"]).name)
+        print("Heat Status: " + OnOFFFlag(stateData["heatStatus"]).name)
+        print("Use On Demand: " + OnDemandFlag(stateData["useOnDemand"]).name)
+        print("Weekly Control: " + OnOFFFlag(stateData["weeklyControl"]).name)
+        # Print the daySequences
+        print("Day Sequences")
+        for i in range(7):
+            print("\t" + DayOfWeek(stateData["daySequences"][str(i)]["dayOfWeek"]).name)
+            if "daySequence" in stateData["daySequences"][str(i)]:
+                for j in stateData["daySequences"][str(i)]["daySequence"]:
+                    print(
+                        "\t\tHour: "
+                        + stateData["daySequences"][str(i)]["daySequence"][j]["hour"]
+                        + ", Minute: "
+                        + stateData["daySequences"][str(i)]["daySequence"][j]["minute"]
+                        + ", "
+                        + OnOFFFlag(
+                            stateData["daySequences"][str(i)]["daySequence"][j][
+                                "isOnOFF"
+                            ]
+                        ).name
+                    )
+            else:
+                print("\t\tNone")
 
-    def getTemperatureByte(self, temperature):
-        return int(2.0 * temperature)
-
-    def getTemperatureFromByte(self, temperatureByte):
-        return float((temperatureByte >> 1) + (0.5 if temperatureByte & 1 else 0))
+    # Convert from a list of big endian hex bytes to an integer
+    def bigHexToInt(self, hex):
+        bigEndianStr = "".join("%02x" % b for b in hex)
+        littleHex = bytearray.fromhex(bigEndianStr)
+        littleHex.reverse()
+        littleHexStr = "".join("%02x" % b for b in littleHex)
+        return int(littleHexStr, 16)
 
     # Send a request to the binary API
     def sendRequest(
