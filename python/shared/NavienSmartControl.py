@@ -219,9 +219,7 @@ class NavienSmartControl:
 
     # HTTP response handler
     def handleResponse(self, response):
-
         # We need to check for the HTTP response code before attempting to parse the data
-        # print('Response status code=' + str(response.status_code))
         if response.status_code != 200:
             print(response.text)
             response_data = json.loads(response.text)
@@ -245,6 +243,7 @@ class NavienSmartControl:
 
         return gateway_data
 
+    # Connect to the binary API service
     def connect(self, gatewayID):
 
         # Construct a socket object.
@@ -255,7 +254,7 @@ class NavienSmartControl:
             (NavienSmartControl.navienServer, NavienSmartControl.navienServerSocketPort)
         )
 
-        # Request the status.
+        # Send the initial connection details
         self.connection.sendall(
             (self.userID + "$" + "iPhone1.0" + "$" + gatewayID).encode()
         )
@@ -263,7 +262,7 @@ class NavienSmartControl:
         # Receive the status.
         data = self.connection.recv(1024)
 
-        # Return the parsed home state data.
+        # Return the parsed data.
         return self.parseResponse(data)
 
     # Main handler for parsing responses from the binary protocol
@@ -425,10 +424,6 @@ class NavienSmartControl:
                 "2s 2s B B B B 2s B B 2s 4s B B 2s B B B B B B B B B", data[12:43]
             )
         )
-        print(
-            "controllerVersion: "
-            + "".join("%02x" % b for b in stateResponseData.controllerVersion)
-        )
 
         # Load each of the 7 daily sets of day sequences
         daySequenceResponseColumns = collections.namedtuple(
@@ -483,7 +478,48 @@ class NavienSmartControl:
 
     # Parse trend sample response
     def parseTrendSampleResponse(self, commonResponseData, data):
-        print("Run away!")
+        if len(data) > 39:
+            trendSampleResponseColumns = collections.namedtuple(
+                "response",
+                [
+                    "controllerVersion",
+                    "pannelVersion",
+                    "deviceSorting",
+                    "deviceCount",
+                    "currentChannel",
+                    "deviceNumber",
+                    "modelInfo",
+                    "totalOperatedTime",
+                    "totalGasAccumulateSum",
+                    "totalHotWaterAccumulateSum",
+                    "totalCHOperatedTime",
+                    "totalDHWUsageTime",
+                ],
+            )
+            trendSampleResponseData = trendSampleResponseColumns._make(
+                struct.unpack("2s 2s B B B B 3s 4s 4s 4s 4s 4s", data[12:43])
+            )
+        else:
+            trendSampleResponseColumns = collections.namedtuple(
+                "response",
+                [
+                    "controllerVersion",
+                    "pannelVersion",
+                    "deviceSorting",
+                    "deviceCount",
+                    "currentChannel",
+                    "deviceNumber",
+                    "modelInfo",
+                    "totalOperatedTime",
+                    "totalGasAccumulateSum",
+                    "totalHotWaterAccumulateSum",
+                    "totalCHOperatedTime",
+                ],
+            )
+            trendSampleResponseData = trendSampleResponseColumns._make(
+                struct.unpack("2s 2s B B B B 3s 4s 4s 4s 4s", data[12:39])
+            )
+        return trendSampleResponseData._asdict()
 
     # Parse trend month response
     def parseTrendMonthResponse(self, commonResponseData, data):
@@ -496,6 +532,8 @@ class NavienSmartControl:
     # Parse error code response
     def parseErrorCodeResponse(self, commonResponseData, data):
         print("Run away!")
+
+    # ----- Convenience methods for printing response data in human readable form ----- #
 
     # Print Channel Information response data
     def printChannelInformation(self, channelInformation):
@@ -593,7 +631,7 @@ class NavienSmartControl:
 
     # Print State response data
     def printState(self, stateData, temperatureType):
-        print(json.dumps(stateData, indent=2, default=str))
+        # print(json.dumps(stateData, indent=2, default=str))
         print(
             "Controller Version: "
             + "".join("%02x" % b for b in stateData["controllerVersion"])
@@ -971,6 +1009,61 @@ class NavienSmartControl:
             else:
                 print("\t\tNone")
 
+    # Print the trend sample response data
+    def printTrendSample(self, trendSampleData, temperatureType):
+        # print(json.dumps(trendSampleData, indent=2, default=str))
+        print(
+            "Controller Version: "
+            + "".join("%02x" % b for b in trendSampleData["controllerVersion"])
+        )
+        print(
+            "Panel Version: "
+            + "".join("%02x" % b for b in trendSampleData["pannelVersion"])
+        )
+        print(
+            "Device Model Type: " + DeviceSorting(trendSampleData["deviceSorting"]).name
+        )
+        print("Device Count: " + str(trendSampleData["deviceCount"]))
+        print("Current Channel: " + str(trendSampleData["currentChannel"]))
+        print("Device Number: " + str(trendSampleData["deviceNumber"]))
+        print("Model Info: " + str(self.bigHexToInt(trendSampleData["modelInfo"])))
+        print(
+            "Total Operated Time: "
+            + str(self.bigHexToInt(trendSampleData["totalOperatedTime"]))
+        )
+        # totalGasAccumulateSum needs to be converted based on the metric or imperial setting
+        if temperatureType == TemperatureType.CELSIUS.value:
+            print(
+                "Total Gas Accumulated Sum: "
+                + str(self.bigHexToInt(trendSampleData["totalGasAccumulateSum"]) / 10.0)
+                + " m\u00b2"
+            )
+        else:
+            print(
+                "Total Gas Accumulated Sum: "
+                + str(
+                    (
+                        self.bigHexToInt(trendSampleData["totalGasAccumulateSum"])
+                        * 35.314667
+                    )
+                    / 10.0
+                )
+                + " ft\u00b3"
+            )
+        print(
+            "Total Hot Water Accumulated Sum: "
+            + str(self.bigHexToInt(trendSampleData["totalHotWaterAccumulateSum"]))
+        )
+        print(
+            "Total Central Heating Operated Time: "
+            + str(self.bigHexToInt(trendSampleData["totalCHOperatedTime"]))
+        )
+        if "totalDHWUsageTime" in trendSampleData:
+            print(
+                "Total Domestic Hot Water Usage Time: "
+                + str(self.bigHexToInt(trendSampleData["totalDHWUsageTime"]))
+            )
+
     # Convert from a list of big endian hex bytes to an integer
     def bigHexToInt(self, hex):
         bigEndianStr = "".join("%02x" % b for b in hex)
@@ -1091,21 +1184,57 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send channel information request
+    # Send channel information request (we already get this when we log in)
     def sendChannelInfoRequest(self, gatewayID, currentControlChannel, deviceNumber):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            0x01,
+            ControlType.CHANNEL_INFORMATION.value,
+            0x00,
+            0x00,
+            self.initWeeklyDay(),
+        )
 
     # Send trend sample request
     def sendTrendSampleRequest(self, gatewayID, currentControlChannel, deviceNumber):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            0x01,
+            ControlType.TREND_SAMPLE.value,
+            0x00,
+            0x00,
+            self.initWeeklyDay(),
+        )
 
     # Send trend month request
     def sendTrendMonthRequest(self, gatewayID, currentControlChannel, deviceNumber):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            0x01,
+            ControlType.TREND_MONTH.value,
+            0x00,
+            0x00,
+            self.initWeeklyDay(),
+        )
 
     # Send trend year request
     def sendTrendYearRequest(self, gatewayID, currentControlChannel, deviceNumber):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            0x01,
+            ControlType.TREND_YEAR.value,
+            0x00,
+            0x00,
+            self.initWeeklyDay(),
+        )
 
     # Send device power control request
     def sendPowerControlRequest(
@@ -1172,7 +1301,6 @@ class NavienSmartControl:
     def sendDeviceControlWeeklyRequest(
         self, gatewayID, currentControlChannel, deviceNumber, WeeklyDay
     ):
-        # sendRequest(self, gatewayID, currentControlChannel, deviceNumber, controlSorting, infoItem, controlItem, controlValue, WeeklyDay)
         return
 
     def setOperationMode(
@@ -1209,6 +1337,7 @@ class NavienSmartControl:
 
         self.connection.sendall(sendData)
 
+    # The following needs to be reviewed and revised once the core control functions are all added
     # ------ Set OperationMode convenience methods --------- #
 
     def setPowerOff(self, homeState):

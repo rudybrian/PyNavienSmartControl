@@ -44,7 +44,7 @@ for i in range(len(gateways)):
     navienSmartControl.printChannelInformation(channelInfo)
 
     print()
-    # Request the state for each connected device
+    # Request the info for each connected device
     for chan in channelInfo:
         if (
             DeviceSorting(channelInfo[chan].deviceSorting).name
@@ -52,6 +52,7 @@ for i in range(len(gateways)):
         ):
             print("Channel " + chan + " Info:")
             for deviceNumber in range(1, channelInfo[chan].deviceCount + 1):
+                # Request the current state
                 print("Device: " + str(deviceNumber))
                 state = navienSmartControl.sendStateRequest(
                     binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber
@@ -59,6 +60,17 @@ for i in range(len(gateways)):
 
                 # Print out the current state
                 navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
+
+                # Get the trand sample data
+                trendSample = navienSmartControl.sendTrendSampleRequest(
+                    binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber
+                )
+
+                # Print out the trend sample data
+                navienSmartControl.printTrendSample(
+                    trendSample, channelInfo[chan].deviceTempFlag
+                )
+
 
 # Change the temperature.
 # navienSmartControl.setInsideHeat(homeState, 19.0)
