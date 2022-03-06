@@ -28,6 +28,7 @@ gateways = navienSmartControl.login()
 
 for i in range(len(gateways)):
     # Print out the gateway list information.
+    print("Gateway List")
     print("---------------------------")
     print("Device ID: " + gateways[i]["GID"])
     print("Nickname: " + gateways[i]["NickName"])
@@ -41,7 +42,10 @@ for i in range(len(gateways)):
     channelInfo = navienSmartControl.connect(gateways[i]["GID"])
 
     # Print the channel info
+    print("Channel Info")
+    print("---------------------------")
     navienSmartControl.printChannelInformation(channelInfo)
+    print("---------------------------\n")
 
     print()
     # Request the info for each connected device
@@ -59,17 +63,49 @@ for i in range(len(gateways)):
                 )
 
                 # Print out the current state
+                print("State")
+                print("---------------------------")
                 navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
+                print("---------------------------\n")
 
-                # Get the trand sample data
+                # Request the trend sample data
                 trendSample = navienSmartControl.sendTrendSampleRequest(
                     binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber
                 )
 
                 # Print out the trend sample data
+                print("Trend Sample")
+                print("---------------------------")
                 navienSmartControl.printTrendSample(
                     trendSample, channelInfo[chan].deviceTempFlag
                 )
+                print("---------------------------\n")
+
+                # Request the trend month data
+                trendMonth = navienSmartControl.sendTrendMonthRequest(
+                    binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber
+                )
+
+                # Print out the trend month data
+                print("Trend Month")
+                print("---------------------------")
+                navienSmartControl.printTrendMY(
+                    trendMonth, channelInfo[chan].deviceTempFlag
+                )
+                print("---------------------------\n")
+
+                # Request the trend year data
+                trendYear = navienSmartControl.sendTrendYearRequest(
+                    binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber
+                )
+
+                # Print out the trend year data
+                print("Trend Year")
+                print("---------------------------")
+                navienSmartControl.printTrendMY(
+                    trendYear, channelInfo[chan].deviceTempFlag
+                )
+                print("---------------------------\n")
 
 
 # Change the temperature.

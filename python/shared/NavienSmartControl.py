@@ -122,10 +122,10 @@ class WWSDFlag(enum.Enum):
 
 
 class WWSDMask(enum.Enum):
-    wwsdFlag = 0x01
-    commercialLock = 0x02
-    hotwaterPossibility = 0x04
-    recirculationPossibility = 0x08
+    WWSDFLAG = 0x01
+    COMMERCIAL_LOCK = 0x02
+    HOTWATER_POSSIBILITY = 0x04
+    RECIRCULATION_POSSIBILITY = 0x08
 
 
 class CommercialLockFlag(enum.Enum):
@@ -163,6 +163,11 @@ class DayOfWeek(enum.Enum):
     THU = 5
     FRI = 6
     SAT = 7
+
+
+class ControlSorting(enum.Enum):
+    INFO = 1
+    CONTROL = 2
 
 
 class TempControlType(enum.IntFlag):
@@ -295,9 +300,9 @@ class NavienSmartControl:
         elif commonResponseData.controlType == ControlType.TREND_SAMPLE.value:
             retval = self.parseTrendSampleResponse(commonResponseData, data)
         elif commonResponseData.controlType == ControlType.TREND_MONTH.value:
-            retval = self.parseTrendMonthResponse(commonResponseData, data)
-        elif commonResponseData.controlType == ControlType.YEAR.value:
-            retval = self.parseTrendYearResponse(commonResponseData, data)
+            retval = self.parseTrendMYResponse(commonResponseData, data)
+        elif commonResponseData.controlType == ControlType.TREND_YEAR.value:
+            retval = self.parseTrendMYResponse(commonResponseData, data)
         elif commonResponseData.controlType == ControlType.ERROR_CODE.value:
             retval = self.parseErrorCodeResponse(commonResponseData, data)
         elif commonResponseData.controlType == ControlType.UNKNOWN.value:
@@ -434,15 +439,14 @@ class NavienSmartControl:
         for i in range(7):
             i2 = i * 32
             i3 = i2 + 43
-            daySequences[str(i)]["dayOfWeek"] = data[i3]
+            daySequences[i]["dayOfWeek"] = data[i3]
             weeklyTotalCount = data[i2 + 44]
             for i4 in range(weeklyTotalCount):
                 i5 = i4 * 3
-                daySequences[str(i)]["daySequence"][
-                    str(i4)
-                ] = daySequenceResponseColumns._make(
+                daySequence = daySequenceResponseColumns._make(
                     struct.unpack("B B B", data[i2 + 45 + i5 : i2 + 45 + i5 + 3])
                 )
+                daySequences[i]["daySequence"][str(i4)] = daySequence._asdict()
         if len(data) > 271:
             stateResponseColumns2 = collections.namedtuple(
                 "response",
@@ -521,13 +525,52 @@ class NavienSmartControl:
             )
         return trendSampleResponseData._asdict()
 
-    # Parse trend month response
-    def parseTrendMonthResponse(self, commonResponseData, data):
-        print("Run away!")
+    # Parse trend month or year response
+    def parseTrendMYResponse(self, commonResponseData, data):
+        trendSampleMYResponseColumns = collections.namedtuple(
+            "response",
+            [
+                "controllerVersion",
+                "pannelVersion",
+                "deviceSorting",
+                "deviceCount",
+                "currentChannel",
+                "deviceNumber",
+                "totalDaySequence",
+            ],
+        )
+        trendSampleMYResponseData = trendSampleMYResponseColumns._make(
+            struct.unpack("2s 2s B B B B B", data[12:21])
+        )
 
-    # Parse trend year response
-    def parseTrendYearResponse(self, commonResponseData, data):
-        print("Run away!")
+        # Read the trend sequence data
+        trendSequenceColumns = collections.namedtuple(
+            "response",
+            [
+                "modelInfo",
+                "gasAccumulatedUse",
+                "hotWaterAccumulatedUse",
+                "hotWaterOperatedCount",
+                "onDemandUseCount",
+                "heatAccumulatedUse",
+                "outdoorAirMaxTemperature",
+                "outdoorAirMinTemperature",
+                "dHWAccumulatedUse",
+            ],
+        )
+
+        trendSequences = AutoVivification()
+        # loops 31 times for month and 24 times for year
+        for i in range(trendSampleMYResponseData.totalDaySequence):
+            i2 = i * 22
+            trendSequences[i]["dMIndex"] = data[i2 + 21]
+            trendData = trendSequenceColumns._make(
+                struct.unpack("3s 4s 4s 2s 2s 2s B B 2s", data[i2 + 22 : i2 + 43])
+            )
+            trendSequences[i]["trendData"] = trendData._asdict()
+
+        tmpTrendSequences = {"trendSequences": trendSequences}
+        return dict(trendSampleMYResponseData._asdict(), **tmpTrendSequences)
 
     # Parse error code response
     def parseErrorCodeResponse(self, commonResponseData, data):
@@ -578,13 +621,13 @@ class NavienSmartControl:
             print(
                 "\twwsdFlag: "
                 + WWSDFlag(
-                    (channelInformation[chan].wwsdFlag & WWSDMask.wwsdFlag.value) > 0
+                    (channelInformation[chan].wwsdFlag & WWSDMask.WWSDFLAG.value) > 0
                 ).name
             )
             print(
                 "\tcommercialLock: "
                 + CommercialLockFlag(
-                    (channelInformation[chan].wwsdFlag & WWSDMask.commercialLock.value)
+                    (channelInformation[chan].wwsdFlag & WWSDMask.COMMERCIAL_LOCK.value)
                     > 0
                 ).name
             )
@@ -593,7 +636,7 @@ class NavienSmartControl:
                 + NFBWaterFlag(
                     (
                         channelInformation[chan].wwsdFlag
-                        & WWSDMask.hotwaterPossibility.value
+                        & WWSDMask.HOTWATER_POSSIBILITY.value
                     )
                     > 0
                 ).name
@@ -603,7 +646,7 @@ class NavienSmartControl:
                 + RecirculationFlag(
                     (
                         channelInformation[chan].wwsdFlag
-                        & WWSDMask.recirculationPossibility.value
+                        & WWSDMask.RECIRCULATION_POSSIBILITY.value
                     )
                     > 0
                 ).name
@@ -682,7 +725,7 @@ class NavienSmartControl:
             print(
                 "Total Gas Usage: "
                 + str(self.bigHexToInt(stateData["gasAccumulatedUse"]) / 10.0)
-                + " m\u00b2"
+                + " m\u00b3"
             )
             # only print these if DHW is in use
             if stateData["deviceSorting"] in [
@@ -991,19 +1034,17 @@ class NavienSmartControl:
         # Print the daySequences
         print("Day Sequences")
         for i in range(7):
-            print("\t" + DayOfWeek(stateData["daySequences"][str(i)]["dayOfWeek"]).name)
-            if "daySequence" in stateData["daySequences"][str(i)]:
-                for j in stateData["daySequences"][str(i)]["daySequence"]:
+            print("\t" + DayOfWeek(stateData["daySequences"][i]["dayOfWeek"]).name)
+            if "daySequence" in stateData["daySequences"][i]:
+                for j in stateData["daySequences"][i]["daySequence"]:
                     print(
                         "\t\tHour: "
-                        + stateData["daySequences"][str(i)]["daySequence"][j]["hour"]
+                        + stateData["daySequences"][i]["daySequence"][j]["hour"]
                         + ", Minute: "
-                        + stateData["daySequences"][str(i)]["daySequence"][j]["minute"]
+                        + stateData["daySequences"][i]["daySequence"][j]["minute"]
                         + ", "
                         + OnOFFFlag(
-                            stateData["daySequences"][str(i)]["daySequence"][j][
-                                "isOnOFF"
-                            ]
+                            stateData["daySequences"][i]["daySequence"][j]["isOnOFF"]
                         ).name
                     )
             else:
@@ -1036,7 +1077,7 @@ class NavienSmartControl:
             print(
                 "Total Gas Accumulated Sum: "
                 + str(self.bigHexToInt(trendSampleData["totalGasAccumulateSum"]) / 10.0)
-                + " m\u00b2"
+                + " m\u00b3"
             )
         else:
             print(
@@ -1063,6 +1104,177 @@ class NavienSmartControl:
                 "Total Domestic Hot Water Usage Time: "
                 + str(self.bigHexToInt(trendSampleData["totalDHWUsageTime"]))
             )
+
+    # print the trend month or year response data
+    def printTrendMY(self, trendMYData, temperatureType):
+        # print(json.dumps(trendMYData, indent=2, default=str))
+        print(
+            "Controller Version: "
+            + "".join("%02x" % b for b in trendMYData["controllerVersion"])
+        )
+        print(
+            "Panel Version: "
+            + "".join("%02x" % b for b in trendMYData["pannelVersion"])
+        )
+        print("Device Model Type: " + DeviceSorting(trendMYData["deviceSorting"]).name)
+        print("Device Count: " + str(trendMYData["deviceCount"]))
+        print("Current Channel: " + str(trendMYData["currentChannel"]))
+        print("Device Number: " + str(trendMYData["deviceNumber"]))
+        # Print the trend data
+        for i in range(trendMYData["totalDaySequence"]):
+            print("\tIndex:" + str(trendMYData["trendSequences"][i]["dMIndex"]))
+            print(
+                "\t\tModel Info: "
+                + str(
+                    self.bigHexToInt(
+                        trendMYData["trendSequences"][i]["trendData"]["modelInfo"]
+                    )
+                )
+            )
+            print(
+                "\t\tHot Water Operated Count: "
+                + str(
+                    self.bigHexToInt(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "hotWaterOperatedCount"
+                        ]
+                    )
+                )
+            )
+            print(
+                "\t\tOn Demand Use Count: "
+                + str(
+                    self.bigHexToInt(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "onDemandUseCount"
+                        ]
+                    )
+                )
+            )
+            print(
+                "\t\tHeat Accumulated Use: "
+                + str(
+                    self.bigHexToInt(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "heatAccumulatedUse"
+                        ]
+                    )
+                )
+            )
+            print(
+                "\t\tDomestic Hot Water Accumulated Use: "
+                + str(
+                    self.bigHexToInt(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "dHWAccumulatedUse"
+                        ]
+                    )
+                )
+            )
+            if temperatureType == TemperatureType.CELSIUS.value:
+                print(
+                    "\t\tTotal Gas Usage: "
+                    + str(
+                        self.bigHexToInt(
+                            trendMYData["trendSequences"][i]["trendData"][
+                                "gasAccumulatedUse"
+                            ]
+                        )
+                        / 10.0
+                    )
+                    + " m\u00b3"
+                )
+                print(
+                    "\t\tHot water Accumulated Use: "
+                    + str(
+                        self.bigHexToInt(
+                            trendMYData["trendSequences"][i]["trendData"][
+                                "hotWaterAccumulatedUse"
+                            ]
+                        )
+                        / 10.0
+                    )
+                    + " L"
+                )
+                print(
+                    "\t\tOutdoor Air Max Temperature: "
+                    + str(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "outdoorAirMaxTemperature"
+                        ]
+                        / 2.0
+                    )
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
+                print(
+                    "\t\tOutdoor Air Min Temperature: "
+                    + str(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "outdoorAirMinTemperature"
+                        ]
+                        / 2.0
+                    )
+                    + " "
+                    + u"\u00b0"
+                    + "C"
+                )
+            elif temperatureType == TemperatureType.FAHRENHEIT.value:
+                print(
+                    "\t\tTotal Gas Usage: "
+                    + str(
+                        (
+                            self.bigHexToInt(
+                                trendMYData["trendSequences"][i]["trendData"][
+                                    "gasAccumulatedUse"
+                                ]
+                            )
+                            * 35.314667
+                        )
+                        / 10.0
+                    )
+                    + " ft\u00b3"
+                )
+                print(
+                    "\t\tHot water Accumulated Use: "
+                    + str(
+                        (
+                            self.bigHexToInt(
+                                trendMYData["trendSequences"][i]["trendData"][
+                                    "hotWaterAccumulatedUse"
+                                ]
+                            )
+                            / 3.785
+                        )
+                        / 10.0
+                    )
+                    + " G"
+                )
+                print(
+                    "\t\tOutdoor Air Max Temperature: "
+                    + str(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "outdoorAirMaxTemperature"
+                        ]
+                    )
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+                print(
+                    "\t\tOutdoor Air Min Temperature: "
+                    + str(
+                        trendMYData["trendSequences"][i]["trendData"][
+                            "outdoorAirMinTemperature"
+                        ]
+                    )
+                    + " "
+                    + u"\u00b0"
+                    + "F"
+                )
+            else:
+                raise Exception("Error: Invalid temperatureType")
 
     # Convert from a list of big endian hex bytes to an integer
     def bigHexToInt(self, hex):
@@ -1177,7 +1389,7 @@ class NavienSmartControl:
             gatewayID,
             currentControlChannel,
             deviceNumber,
-            0x01,
+            ControlSorting.INFO.value,
             ControlType.STATE.value,
             0x00,
             0x00,
@@ -1190,7 +1402,7 @@ class NavienSmartControl:
             gatewayID,
             currentControlChannel,
             deviceNumber,
-            0x01,
+            ControlSorting.INFO.value,
             ControlType.CHANNEL_INFORMATION.value,
             0x00,
             0x00,
@@ -1203,7 +1415,7 @@ class NavienSmartControl:
             gatewayID,
             currentControlChannel,
             deviceNumber,
-            0x01,
+            ControlSorting.INFO.value,
             ControlType.TREND_SAMPLE.value,
             0x00,
             0x00,
@@ -1216,7 +1428,7 @@ class NavienSmartControl:
             gatewayID,
             currentControlChannel,
             deviceNumber,
-            0x01,
+            ControlSorting.INFO.value,
             ControlType.TREND_MONTH.value,
             0x00,
             0x00,
@@ -1229,7 +1441,7 @@ class NavienSmartControl:
             gatewayID,
             currentControlChannel,
             deviceNumber,
-            0x01,
+            ControlSorting.INFO.value,
             ControlType.TREND_YEAR.value,
             0x00,
             0x00,
