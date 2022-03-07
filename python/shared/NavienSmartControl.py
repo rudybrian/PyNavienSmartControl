@@ -40,16 +40,6 @@ class OperateMode(enum.Enum):
     ACTIVE = 128
 
 
-class ModeState(enum.Enum):
-    POWER_OFF = 1
-    GOOUT_ON = 2
-    INSIDE_HEAT = 3
-    ONDOL_HEAT = 4
-    SIMPLE_RESERVE = 5
-    CIRCLE_RESERVE = 6
-    HOTWATER_ON = 8
-
-
 class HeatLevel(enum.Enum):
     LOW = 1
     MEDIUM = 2
@@ -168,21 +158,6 @@ class DayOfWeek(enum.Enum):
 class ControlSorting(enum.Enum):
     INFO = 1
     CONTROL = 2
-
-
-class TempControlType(enum.IntFlag):
-
-    # 3rd bit.
-    POINTINSIDE = 32
-
-    # 4th bit.
-    POINTONDOL = 16
-
-    # 5th bit.
-    POINTWATER = 8
-
-    # 6th - 8th bits (last 3 bits).
-    WATERMODE = 7
 
 
 class AutoVivification(dict):
@@ -439,8 +414,9 @@ class NavienSmartControl:
         for i in range(7):
             i2 = i * 32
             i3 = i2 + 43
-            daySequences[i]["dayOfWeek"] = data[i3]
-            weeklyTotalCount = data[i2 + 44]
+            # Note Python 2.x doesn't convert these properly, so need to explicitly unpack them
+            daySequences[i]["dayOfWeek"] = self.bigHexToInt(data[i3])
+            weeklyTotalCount = self.bigHexToInt(data[i2 + 44])
             for i4 in range(weeklyTotalCount):
                 i5 = i4 * 3
                 daySequence = daySequenceResponseColumns._make(
@@ -580,54 +556,62 @@ class NavienSmartControl:
 
     # Print Channel Information response data
     def printChannelInformation(self, channelInformation):
-        for chan in channelInformation:
-            print("Channel:" + chan)
-            # for name, value in channelInformation[chan]._asdict().items():
+        for chan in range(1, len(channelInformation) + 1):
+            print("Channel:" + str(chan))
+            # for name, value in channelInformation[str(chan)]._asdict().items():
             #    print('\t' + name + '->' + str(value))
             print(
                 "\tDevice Model Type: "
-                + DeviceSorting(channelInformation[chan].deviceSorting).name
+                + DeviceSorting(channelInformation[str(chan)].deviceSorting).name
             )
-            print("\tDevice Count: " + str(channelInformation[chan].deviceCount))
+            print("\tDevice Count: " + str(channelInformation[str(chan)].deviceCount))
             print(
                 "\tTemp Flag: "
-                + TemperatureType(channelInformation[chan].deviceTempFlag).name
+                + TemperatureType(channelInformation[str(chan)].deviceTempFlag).name
             )
             print(
                 "\tMinimum Setting Water Temperature: "
-                + str(channelInformation[chan].minimumSettingWaterTemperature)
+                + str(channelInformation[str(chan)].minimumSettingWaterTemperature)
             )
             print(
                 "\tMaximum Setting Water Temperature: "
-                + str(channelInformation[chan].maximumSettingWaterTemperature)
+                + str(channelInformation[str(chan)].maximumSettingWaterTemperature)
             )
             print(
                 "\tHeating Minimum Setting Water Temperature: "
-                + str(channelInformation[chan].heatingMinimumSettingWaterTemperature)
+                + str(
+                    channelInformation[str(chan)].heatingMinimumSettingWaterTemperature
+                )
             )
             print(
                 "\tHeating Maximum Setting Water Temperature: "
-                + str(channelInformation[chan].heatingMaximumSettingWaterTemperature)
+                + str(
+                    channelInformation[str(chan)].heatingMaximumSettingWaterTemperature
+                )
             )
             print(
                 "\tUse On Demand: "
-                + OnDemandFlag(channelInformation[chan].useOnDemand).name
+                + OnDemandFlag(channelInformation[str(chan)].useOnDemand).name
             )
             print(
                 "\tHeating Control: "
-                + HeatingControl(channelInformation[chan].heatingControl).name
+                + HeatingControl(channelInformation[str(chan)].heatingControl).name
             )
             # Do some different stuff with the wwsdFlag value
             print(
                 "\twwsdFlag: "
                 + WWSDFlag(
-                    (channelInformation[chan].wwsdFlag & WWSDMask.WWSDFLAG.value) > 0
+                    (channelInformation[str(chan)].wwsdFlag & WWSDMask.WWSDFLAG.value)
+                    > 0
                 ).name
             )
             print(
                 "\tcommercialLock: "
                 + CommercialLockFlag(
-                    (channelInformation[chan].wwsdFlag & WWSDMask.COMMERCIAL_LOCK.value)
+                    (
+                        channelInformation[str(chan)].wwsdFlag
+                        & WWSDMask.COMMERCIAL_LOCK.value
+                    )
                     > 0
                 ).name
             )
@@ -635,7 +619,7 @@ class NavienSmartControl:
                 "\thotwaterPossibility: "
                 + NFBWaterFlag(
                     (
-                        channelInformation[chan].wwsdFlag
+                        channelInformation[str(chan)].wwsdFlag
                         & WWSDMask.HOTWATER_POSSIBILITY.value
                     )
                     > 0
@@ -645,7 +629,7 @@ class NavienSmartControl:
                 "\trecirculationPossibility: "
                 + RecirculationFlag(
                     (
-                        channelInformation[chan].wwsdFlag
+                        channelInformation[str(chan)].wwsdFlag
                         & WWSDMask.RECIRCULATION_POSSIBILITY.value
                     )
                     > 0
@@ -653,23 +637,27 @@ class NavienSmartControl:
             )
             print(
                 "\tHigh Temperature: "
-                + HighTemperature(channelInformation[chan].highTemperature).name
+                + HighTemperature(channelInformation[str(chan)].highTemperature).name
             )
             print(
                 "\tUse Warm Water: "
-                + OnOFFFlag(channelInformation[chan].useWarmWater).name
+                + OnOFFFlag(channelInformation[str(chan)].useWarmWater).name
             )
             # These values are ony populated with firmware version > 1500
             if hasattr(
-                channelInformation[chan], "minimumSettingRecirculationTemperature"
+                channelInformation[str(chan)], "minimumSettingRecirculationTemperature"
             ):
                 print(
                     "\tMinimum Recirculation Temperature: "
-                    + channelInformation[chan].minimumSettingRecirculationTemperature
+                    + channelInformation[
+                        str(chan)
+                    ].minimumSettingRecirculationTemperature
                 )
                 print(
                     "\tMaximum Recirculation Temperature: "
-                    + channelInformation[chan].maximumSettingRecirculationTemperature
+                    + channelInformation[
+                        str(chan)
+                    ].maximumSettingRecirculationTemperature
                 )
 
     # Print State response data
@@ -677,18 +665,14 @@ class NavienSmartControl:
         # print(json.dumps(stateData, indent=2, default=str))
         print(
             "Controller Version: "
-            + "".join("%02x" % b for b in stateData["controllerVersion"])
+            + str(self.bigHexToInt(stateData["controllerVersion"]))
         )
-        print(
-            "Panel Version: " + "".join("%02x" % b for b in stateData["pannelVersion"])
-        )
+        print("Panel Version: " + str(self.bigHexToInt(stateData["pannelVersion"])))
         print("Device Model Type: " + DeviceSorting(stateData["deviceSorting"]).name)
         print("Device Count: " + str(stateData["deviceCount"]))
         print("Current Channel: " + str(stateData["currentChannel"]))
         print("Device Number: " + str(stateData["deviceNumber"]))
-        errorCD = (stateData["errorCD"][0] & 0xFF) + (
-            stateData["errorCD"][1] & 0xFF
-        ) * 256
+        errorCD = self.bigHexToInt(stateData["errorCD"])
         if errorCD == 0:
             errorCD = "Normal"
         print("Error Code: " + str(errorCD))
@@ -709,23 +693,15 @@ class NavienSmartControl:
             # This needs to be summed for cascaded units
             print(
                 "Current Gas Usage: "
-                + str(
-                    (
-                        (
-                            (stateData["gasInstantUse"][0] & 0xFF)
-                            + (stateData["gasInstantUse"][1] & 0xFF) * 256
-                        )
-                        * GIUFactor
-                    )
-                    / 10.0
-                )
+                + str((self.bigHexToInt(stateData["gasInstantUse"]) * GIUFactor) / 10.0)
                 + " kcal"
             )
             # This needs to be summed for cascaded units
             print(
                 "Total Gas Usage: "
                 + str(self.bigHexToInt(stateData["gasAccumulatedUse"]) / 10.0)
-                + " m\u00b3"
+                + " m"
+                + u"\u00b3"
             )
             # only print these if DHW is in use
             if stateData["deviceSorting"] in [
@@ -776,13 +752,7 @@ class NavienSmartControl:
                 )
                 print(
                     "Hot Water Flow Rate: "
-                    + str(
-                        (
-                            (stateData["hotWaterFlowRate"][0] & 0xFF)
-                            + (stateData["hotWaterFlowRate"][1] & 0xFF) * 256
-                        )
-                        / 10.0
-                    )
+                    + str(self.bigHexToInt(stateData["hotWaterFlowRate"]) / 10.0)
                     + " LPM"
                 )
                 print(
@@ -871,14 +841,7 @@ class NavienSmartControl:
             # This needs to be summed for cascaded units
             print(
                 "Current Gas Usage: "
-                + str(
-                    (
-                        (stateData["gasInstantUse"][0] & 0xFF)
-                        + (stateData["gasInstantUse"][1] & 0xFF) * 256
-                    )
-                    * GIUFactor
-                    * 3.968
-                )
+                + str(self.bigHexToInt(stateData["gasInstantUse"]) * GIUFactor * 3.968)
                 + " BTU"
             )
             # This needs to be summed for cascaded units
@@ -888,7 +851,8 @@ class NavienSmartControl:
                     (self.bigHexToInt(stateData["gasAccumulatedUse"]) * 35.314667)
                     / 10.0
                 )
-                + " ft\u00b3"
+                + " ft"
+                + u"\u00b3"
             )
             # only print these if DHW is in use
             if stateData["deviceSorting"] in [
@@ -940,14 +904,7 @@ class NavienSmartControl:
                 print(
                     "Hot Water Flow Rate: "
                     + str(
-                        (
-                            (
-                                (stateData["hotWaterFlowRate"][0] & 0xFF)
-                                + (stateData["hotWaterFlowRate"][1] & 0xFF) * 256
-                            )
-                            / 3.785
-                        )
-                        / 10.0
+                        (self.bigHexToInt(stateData["hotWaterFlowRate"]) / 3.785) / 10.0
                     )
                     + " GPM"
                 )
@@ -1055,11 +1012,10 @@ class NavienSmartControl:
         # print(json.dumps(trendSampleData, indent=2, default=str))
         print(
             "Controller Version: "
-            + "".join("%02x" % b for b in trendSampleData["controllerVersion"])
+            + str(self.bigHexToInt(trendSampleData["controllerVersion"]))
         )
         print(
-            "Panel Version: "
-            + "".join("%02x" % b for b in trendSampleData["pannelVersion"])
+            "Panel Version: " + str(self.bigHexToInt(trendSampleData["pannelVersion"]))
         )
         print(
             "Device Model Type: " + DeviceSorting(trendSampleData["deviceSorting"]).name
@@ -1077,7 +1033,8 @@ class NavienSmartControl:
             print(
                 "Total Gas Accumulated Sum: "
                 + str(self.bigHexToInt(trendSampleData["totalGasAccumulateSum"]) / 10.0)
-                + " m\u00b3"
+                + " m"
+                + u"\u00b3"
             )
         else:
             print(
@@ -1089,7 +1046,8 @@ class NavienSmartControl:
                     )
                     / 10.0
                 )
-                + " ft\u00b3"
+                + " ft"
+                + u"\u00b3"
             )
         print(
             "Total Hot Water Accumulated Sum: "
@@ -1110,19 +1068,19 @@ class NavienSmartControl:
         # print(json.dumps(trendMYData, indent=2, default=str))
         print(
             "Controller Version: "
-            + "".join("%02x" % b for b in trendMYData["controllerVersion"])
+            + str(self.bigHexToInt(trendMYData["controllerVersion"]))
         )
-        print(
-            "Panel Version: "
-            + "".join("%02x" % b for b in trendMYData["pannelVersion"])
-        )
+        print("Panel Version: " + str(self.bigHexToInt(trendMYData["pannelVersion"])))
         print("Device Model Type: " + DeviceSorting(trendMYData["deviceSorting"]).name)
         print("Device Count: " + str(trendMYData["deviceCount"]))
         print("Current Channel: " + str(trendMYData["currentChannel"]))
         print("Device Number: " + str(trendMYData["deviceNumber"]))
         # Print the trend data
         for i in range(trendMYData["totalDaySequence"]):
-            print("\tIndex:" + str(trendMYData["trendSequences"][i]["dMIndex"]))
+            print(
+                "\tIndex: "
+                + str(self.bigHexToInt(trendMYData["trendSequences"][i]["dMIndex"]))
+            )
             print(
                 "\t\tModel Info: "
                 + str(
@@ -1182,7 +1140,8 @@ class NavienSmartControl:
                         )
                         / 10.0
                     )
-                    + " m\u00b3"
+                    + " m"
+                    + u"\u00b3"
                 )
                 print(
                     "\t\tHot water Accumulated Use: "
@@ -1234,7 +1193,8 @@ class NavienSmartControl:
                         )
                         / 10.0
                     )
-                    + " ft\u00b3"
+                    + " ft"
+                    + u"\u00b3"
                 )
                 print(
                     "\t\tHot water Accumulated Use: "
@@ -1276,8 +1236,13 @@ class NavienSmartControl:
             else:
                 raise Exception("Error: Invalid temperatureType")
 
-    # Convert from a list of big endian hex bytes to an integer
+    # Convert from a list of big endian hex byte array or string to an integer
     def bigHexToInt(self, hex):
+        if isinstance(hex, str):
+            hex = bytearray(hex)
+        if isinstance(hex, int):
+            # This is already an int, just return it
+            return hex
         bigEndianStr = "".join("%02x" % b for b in hex)
         littleHex = bytearray.fromhex(bigEndianStr)
         littleHex.reverse()
