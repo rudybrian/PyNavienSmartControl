@@ -8,6 +8,7 @@ from shared.NavienSmartControl import NavienSmartControl
 
 # Import select enums from the NavienSmartControl library
 from shared.NavienSmartControl import DeviceSorting
+from shared.NavienSmartControl import OnOFFFlag
 
 # The credentials are loaded from a separate file.
 import json
@@ -105,6 +106,25 @@ for i in range(len(gateways)):
                 navienSmartControl.printTrendMY(
                     trendYear, channelInfo[chan].deviceTempFlag
                 )
+                print("---------------------------\n")
+
+                # Turn the power off
+                # state = navienSmartControl.sendPowerControlRequest(
+                #    binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber, OnOFFFlag.OFF.value
+                # )
+
+                # Turn the power on
+                state = navienSmartControl.sendPowerControlRequest(
+                    binascii.unhexlify(gateways[i]["GID"]),
+                    int(chan),
+                    deviceNumber,
+                    OnOFFFlag.ON.value,
+                )
+
+                # Print out the current state
+                print("State")
+                print("---------------------------")
+                navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
                 print("---------------------------\n")
 
 

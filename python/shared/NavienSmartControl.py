@@ -160,6 +160,16 @@ class ControlSorting(enum.Enum):
     CONTROL = 2
 
 
+class DeviceControl(enum.Enum):
+    POWER = 1
+    HEAT = 2
+    WATER_TEMPERATURE = 3
+    HEATTING_WATER_TEMPERATURE = 4
+    ON_DEMAND = 5
+    WEEKLY = 6
+    RECIRCULATION_TEMPERATURE = 7
+
+
 class AutoVivification(dict):
     """Implementation of perl's autovivification feature."""
 
@@ -1417,7 +1427,16 @@ class NavienSmartControl:
     def sendPowerControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, powerState
     ):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.POWER.value,
+            OnOFFFlag(powerState).value,
+            self.initWeeklyDay(),
+        )
 
     # Send device heat control request
     def sendHeatControlRequest(
