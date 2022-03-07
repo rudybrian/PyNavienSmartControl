@@ -1019,7 +1019,7 @@ class NavienSmartControl:
 
     # Print the trend sample response data
     def printTrendSample(self, trendSampleData, temperatureType):
-        # print(json.dumps(trendSampleData, indent=2, default=str))
+        print(json.dumps(trendSampleData, indent=2, default=str))
         print(
             "Controller Version: "
             + str(self.bigHexToInt(trendSampleData["controllerVersion"]))
@@ -1440,56 +1440,49 @@ class NavienSmartControl:
 
     # Send device heat control request
     def sendHeatControlRequest(
-        self,
-        gatewayID,
-        currentControlChannel,
-        deviceNumber,
-        channelInformation,
-        heatVal,
+        self, gatewayID, currentControlChannel, deviceNumber, heatVal
     ):
         return
 
     # Send device water temperature control request
     def sendWaterTempControlRequest(
-        self,
-        gatewayID,
-        currentControlChannel,
-        deviceNumber,
-        channelInformation,
-        heatVal,
+        self, gatewayID, currentControlChannel, deviceNumber, tempVal
     ):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.WATER_TEMPERATURE.value,
+            tempVal,
+            self.initWeeklyDay(),
+        )
 
     # Send device heatting water temperature control request
     def sendHeattingWaterTempControlRequest(
-        self,
-        gatewayID,
-        currentControlChannel,
-        deviceNumber,
-        channelInformation,
-        heatVal,
+        self, gatewayID, currentControlChannel, deviceNumber, tempVal
     ):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.HEATTING_WATER_TEMPERATURE.value,
+            tempVal,
+            self.initWeeklyDay(),
+        )
 
     # Send device on demand control request
     def sendOnDemandControlRequest(
-        self,
-        gatewayID,
-        currentControlChannel,
-        deviceNumber,
-        channelInformation,
-        onDemandState,
+        self, gatewayID, currentControlChannel, deviceNumber, onDemandState
     ):
         return
 
     # Send device recirculation control request
     def sendRecirculationControlRequest(
-        self,
-        gatewayID,
-        currentControlChannel,
-        deviceNumber,
-        channelInformation,
-        recirculationState,
+        self, gatewayID, currentControlChannel, deviceNumber, recirculationState
     ):
         return
 
@@ -1535,12 +1528,6 @@ class NavienSmartControl:
 
     # The following needs to be reviewed and revised once the core control functions are all added
     # ------ Set OperationMode convenience methods --------- #
-
-    def setPowerOff(self, homeState):
-        return self.setOperationMode(homeState, OperateMode.POWER_OFF, 1, 0, 0, 0, 0)
-
-    def setPowerOn(self, homeState):
-        return self.setOperationMode(homeState, OperateMode.POWER_ON, 1, 0, 0, 0, 0)
 
     def setGoOutOff(self, homeState):
         return self.setOperationMode(homeState, OperateMode.GOOUT_OFF, 1, 0, 0, 0, 0)

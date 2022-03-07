@@ -109,16 +109,31 @@ for i in range(len(gateways)):
                 print("---------------------------\n")
 
                 # Turn the power off
+                # print("Turn the power off")
                 # state = navienSmartControl.sendPowerControlRequest(
-                #    binascii.unhexlify(gateways[i]["GID"]), int(chan), deviceNumber, OnOFFFlag.OFF.value
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                #     OnOFFFlag.OFF.value
                 # )
 
                 # Turn the power on
-                state = navienSmartControl.sendPowerControlRequest(
+                # print("Turn the power on")
+                # state = navienSmartControl.sendPowerControlRequest(
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                #     OnOFFFlag.ON.value,
+                # )
+
+                # Set the water temperature to 125
+                tempToSet = 125
+                print("Set the water temperature to " + str(tempToSet))
+                state = navienSmartControl.sendWaterTempControlRequest(
                     binascii.unhexlify(gateways[i]["GID"]),
                     int(chan),
                     deviceNumber,
-                    OnOFFFlag.ON.value,
+                    tempToSet,
                 )
 
                 # Print out the current state
