@@ -22,30 +22,6 @@ import enum
 import json
 
 
-class OperateMode(enum.Enum):
-    POWER_OFF = 1
-    POWER_ON = 2
-    GOOUT_OFF = 3
-    GOOUT_ON = 4
-    INSIDE_HEAT = 5
-    ONDOL_HEAT = 6
-    REPEAT_RESERVE = 7
-    CIRCLE_RESERVE = 8
-    SIMPLE_RESERVE = 9
-    HOTWATER_ON = 10
-    HOTWATER_OFF = 11
-    WATER_SET_TEMP = 12
-    QUICK_HOTWATER = 13
-    HEAT_LEVEL = 14
-    ACTIVE = 128
-
-
-class HeatLevel(enum.Enum):
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
-
-
 class ControlType(enum.Enum):
     UNKNOWN = 0
     CHANNEL_INFORMATION = 1
@@ -164,7 +140,7 @@ class DeviceControl(enum.Enum):
     POWER = 1
     HEAT = 2
     WATER_TEMPERATURE = 3
-    HEATTING_WATER_TEMPERATURE = 4
+    HEATING_WATER_TEMPERATURE = 4
     ON_DEMAND = 5
     WEEKLY = 6
     RECIRCULATION_TEMPERATURE = 7
@@ -269,10 +245,7 @@ class NavienSmartControl:
             ],
         )
         commonResponseData = commonResponseColumns._make(
-            struct.unpack(
-                "8s          B             B                B                  B",
-                data[:12],
-            )
+            struct.unpack("8s B B B B", data[:12])
         )
 
         # print("Device ID: " + "".join("%02x" % b for b in commonResponseData.deviceID))
@@ -1440,9 +1413,48 @@ class NavienSmartControl:
 
     # Send device heat control request
     def sendHeatControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, heatVal
+        self, gatewayID, currentControlChannel, deviceNumber, heatState
     ):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.HEAT.value,
+            OnOFFFlag(heatState).value,
+            self.initWeeklyDay(),
+        )
+
+    # Send device on demand control request
+    def sendOnDemandControlRequest(
+        self, gatewayID, currentControlChannel, deviceNumber
+    ):
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.ON_DEMAND.value,
+            OnOFFFlag.ON.value,
+            self.initWeeklyDay(),
+        )
+
+    # Send device weekly control schedule (enable or disable weekly schedule)
+    def sendDeviceWeeklyControlRequest(
+        self, gatewayID, currentControlChannel, deviceNumber, weeklyState
+    ):
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.WEEKLY.value,
+            OnOFFFlag(weeklyState).value,
+            self.initWeeklyDay(),
+        )
 
     # Send device water temperature control request
     def sendWaterTempControlRequest(
@@ -1459,8 +1471,8 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send device heatting water temperature control request
-    def sendHeattingWaterTempControlRequest(
+    # Send device heating water temperature control request
+    def sendHeatingWaterTempControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, tempVal
     ):
         return self.sendRequest(
@@ -1469,151 +1481,28 @@ class NavienSmartControl:
             deviceNumber,
             ControlSorting.CONTROL.value,
             ControlType.UNKNOWN.value,
-            DeviceControl.HEATTING_WATER_TEMPERATURE.value,
+            DeviceControl.HEATING_WATER_TEMPERATURE.value,
             tempVal,
             self.initWeeklyDay(),
         )
 
-    # Send device on demand control request
-    def sendOnDemandControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, onDemandState
+    # Send recirculation temperature control request
+    def sendRecirculationTempControlRequest(
+        self, gatewayID, currentControlChannel, deviceNumber, tempVal
     ):
-        return
-
-    # Send device recirculation control request
-    def sendRecirculationControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, recirculationState
-    ):
-        return
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.RECIRCULATION_TEMPERATURE.value,
+            tempVal,
+            self.initWeeklyDay(),
+        )
 
     # Send request to set weekly schedule
-    def sendDeviceControlWeeklyRequest(
+    def sendDeviceControlWeeklyScheduleRequest(
         self, gatewayID, currentControlChannel, deviceNumber, WeeklyDay
     ):
         return
-
-    def setOperationMode(
-        self, homeState, operateMode, value01, value02, value03, value04, value05
-    ):
-
-        commandListSequence = 0
-        commandListCommand = 131
-        commandListDataLength = 21
-        commandListCount = 0
-
-        sendData = bytearray(
-            [
-                commandListSequence,
-                commandListCommand,
-                commandListDataLength,
-                commandListCount,
-            ]
-        )
-        sendData.extend(homeState.deviceid)
-
-        commandSequence = 1
-        sendData.extend(
-            [
-                commandSequence,
-                operateMode.value,
-                value01,
-                value02,
-                value03,
-                value04,
-                value05,
-            ]
-        )
-
-        self.connection.sendall(sendData)
-
-    # The following needs to be reviewed and revised once the core control functions are all added
-    # ------ Set OperationMode convenience methods --------- #
-
-    def setGoOutOff(self, homeState):
-        return self.setOperationMode(homeState, OperateMode.GOOUT_OFF, 1, 0, 0, 0, 0)
-
-    def setGoOutOn(self, homeState):
-        return self.setOperationMode(homeState, OperateMode.GOOUT_ON, 1, 0, 0, 0, 0)
-
-    def setInsideHeat(self, homeState, temperature):
-        if temperature < self.getTemperatureFromByte(
-            homeState.insideHeatMin
-        ) or temperature > self.getTemperatureFromByte(homeState.insideHeatMax):
-            raise ValueError(
-                "Temperature specified is outside the boiler's supported range."
-            )
-        return self.setOperationMode(
-            homeState,
-            OperateMode.INSIDE_HEAT,
-            1,
-            0,
-            0,
-            0,
-            self.getTemperatureByte(temperature),
-        )
-
-    def setOndolHeat(self, homeState, temperature):
-        if temperature < self.getTemperatureFromByte(
-            homeState.ondolHeatMin
-        ) or temperature > self.getTemperatureFromByte(homeState.ondolHeatMax):
-            raise ValueError(
-                "Temperature specified is outside the boiler's supported range."
-            )
-        return self.setOperationMode(
-            homeState,
-            OperateMode.ONDOL_HEAT,
-            1,
-            0,
-            0,
-            0,
-            self.getTemperatureByte(temperature),
-        )
-
-    def setRepeatReserve(self, homeState, hourInterval, durationMinutes):
-        return self.setOperationMode(
-            homeState,
-            OperateMode.REPEAT_RESERVE,
-            1,
-            0,
-            0,
-            hourInterval,
-            durationMinutes,
-        )
-
-    def setCircleReserve(self, homeState, schedule1, schedule2, schedule3):
-        return self.setOperationMode(
-            homeState, OperateMode.CIRCLE_RESERVE, 1, 0, schedule1, schedule2, schedule3
-        )
-
-    def setHotWaterOn(self, homeState):
-        return self.setOperationMode(homeState, OperateMode.HOTWATER_ON, 1, 0, 0, 0, 0)
-
-    def setHotWaterOff(self, homeState):
-        return self.setOperationMode(homeState, OperateMode.HOTWATER_OFF, 1, 0, 0, 0, 0)
-
-    def setHotWaterHeat(self, homeState, temperature):
-        if temperature < self.getTemperatureFromByte(
-            homeState.hotwaterMin
-        ) or temperature > self.getTemperatureFromByte(homeState.hotwaterMax):
-            raise ValueError(
-                "Temperature specified is outside the boiler's supported range."
-            )
-        return self.setOperationMode(
-            homeState,
-            OperateMode.WATER_SET_TEMP,
-            1,
-            0,
-            0,
-            0,
-            self.getTemperatureByte(temperature),
-        )
-
-    def setQuickHotWater(self, homeState):
-        return self.setOperationMode(
-            homeState, OperateMode.QUICK_HOTWATER, 1, 0, 0, 0, 0
-        )
-
-    def setHeatLevel(self, homeState, heatLevel):
-        return self.setOperationMode(
-            homeState, OperateMode.HEAT_LEVEL, 1, 0, 0, 0, heatLevel.value
-        )

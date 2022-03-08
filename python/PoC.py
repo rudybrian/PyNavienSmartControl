@@ -108,7 +108,7 @@ for i in range(len(gateways)):
                 )
                 print("---------------------------\n")
 
-                # Turn the power off
+                ## Turn the power off
                 # print("Turn the power off")
                 # state = navienSmartControl.sendPowerControlRequest(
                 #     binascii.unhexlify(gateways[i]["GID"]),
@@ -117,7 +117,7 @@ for i in range(len(gateways)):
                 #     OnOFFFlag.OFF.value
                 # )
 
-                # Turn the power on
+                ## Turn the power on
                 # print("Turn the power on")
                 # state = navienSmartControl.sendPowerControlRequest(
                 #     binascii.unhexlify(gateways[i]["GID"]),
@@ -126,22 +126,64 @@ for i in range(len(gateways)):
                 #     OnOFFFlag.ON.value,
                 # )
 
-                # Set the water temperature to 125
-                tempToSet = 125
-                print("Set the water temperature to " + str(tempToSet))
-                state = navienSmartControl.sendWaterTempControlRequest(
+                ## Turn heat on
+                # print("Turn heat on")
+                # state = navienSmartControl.sendHeatControlRequest(
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                #     OnOFFFlag.ON.value,
+                # )
+
+                ## Turn on on demand (equivalent of pressing HotButton)
+                # print("Turn on on-demand")
+                # state = navienSmartControl.sendOnDemandControlRequest(
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                # )
+
+                ## Turn weekly schedule on
+                print("Turn weekly schedule on")
+                state = navienSmartControl.sendDeviceWeeklyControlRequest(
                     binascii.unhexlify(gateways[i]["GID"]),
                     int(chan),
                     deviceNumber,
-                    tempToSet,
+                    OnOFFFlag.ON.value,
                 )
+
+                ## Set the water temperature to 125
+                # tempToSet = 125
+                # print("Set the water temperature to " + str(tempToSet))
+                # state = navienSmartControl.sendWaterTempControlRequest(
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                #     tempToSet,
+                # )
+
+                ## Set the device heating water temperature to 125
+                # tempToSet = 125
+                # print("Set the water temperature to " + str(tempToSet))
+                # state = navienSmartControl.sendHeatingWaterTempControlRequest(
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                #     tempToSet,
+                # )
+
+                ## Set the recirculation temperature to 125
+                # tempToSet = 125
+                # print("Set the water temperature to " + str(tempToSet))
+                # state = navienSmartControl.sendRecirculationTempControlRequest(
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                #     tempToSet,
+                # )
 
                 # Print out the current state
                 print("State")
                 print("---------------------------")
                 navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
                 print("---------------------------\n")
-
-
-# Change the temperature.
-# navienSmartControl.setInsideHeat(homeState, 19.0)
