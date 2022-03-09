@@ -9,6 +9,7 @@ from shared.NavienSmartControl import NavienSmartControl
 # Import select enums from the NavienSmartControl library
 from shared.NavienSmartControl import DeviceSorting
 from shared.NavienSmartControl import OnOFFFlag
+from shared.NavienSmartControl import DayOfWeek
 
 # The credentials are loaded from a separate file.
 import json
@@ -144,13 +145,13 @@ for i in range(len(gateways)):
                 # )
 
                 ## Turn weekly schedule on
-                print("Turn weekly schedule on")
-                state = navienSmartControl.sendDeviceWeeklyControlRequest(
-                    binascii.unhexlify(gateways[i]["GID"]),
-                    int(chan),
-                    deviceNumber,
-                    OnOFFFlag.ON.value,
-                )
+                # print("Turn weekly schedule on")
+                # state = navienSmartControl.sendDeviceWeeklyControlRequest(
+                #     binascii.unhexlify(gateways[i]["GID"]),
+                #     int(chan),
+                #     deviceNumber,
+                #     OnOFFFlag.ON.value,
+                # )
 
                 ## Set the water temperature to 125
                 # tempToSet = 125
@@ -182,8 +183,31 @@ for i in range(len(gateways)):
                 #     tempToSet,
                 # )
 
-                # Print out the current state
-                print("State")
-                print("---------------------------")
-                navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
-                print("---------------------------\n")
+                WeeklyDay = {
+                    "dayOfWeek": DayOfWeek.SUN.value,
+                    "hour": 1,  # 1AM
+                    "minute": 20,  # 20 minutes past the hour (01:20)
+                    "isOnOFF": OnOFFFlag.OFF.value,  # turn off
+                }
+
+                ## Add an entry to the weekly schedule
+                # print("Add an entry to the weekly schedule")
+                # state = navienSmartControl.sendDeviceControlWeeklyScheduleRequest(
+                #     state,
+                #     WeeklyDay,
+                #     "add"
+                # )
+
+                ## Delete an entry from the weekly schedule
+                # print("Delete an entry from the weekly schedule")
+                # state = navienSmartControl.sendDeviceControlWeeklyScheduleRequest(
+                #     state,
+                #     WeeklyDay,
+                #     "delete"
+                # )
+
+                ## Print out the current state
+                # print("State")
+                # print("---------------------------")
+                # navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
+                # print("---------------------------\n")

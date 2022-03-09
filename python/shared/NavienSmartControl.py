@@ -437,6 +437,7 @@ class NavienSmartControl:
         tmpDaySequences = {"daySequences": daySequences}
         result = dict(stateResponseData._asdict(), **tmpDaySequences)
         result.update(stateResponseData2._asdict())
+        result.update(commonResponseData._asdict())
         return result
 
     # Parse trend sample response
@@ -979,9 +980,9 @@ class NavienSmartControl:
                 for j in stateData["daySequences"][i]["daySequence"]:
                     print(
                         "\t\tHour: "
-                        + stateData["daySequences"][i]["daySequence"][j]["hour"]
+                        + str(stateData["daySequences"][i]["daySequence"][j]["hour"])
                         + ", Minute: "
-                        + stateData["daySequences"][i]["daySequence"][j]["minute"]
+                        + str(stateData["daySequences"][i]["daySequence"][j]["minute"])
                         + ", "
                         + OnOFFFlag(
                             stateData["daySequences"][i]["daySequence"][j]["isOnOFF"]
@@ -992,7 +993,7 @@ class NavienSmartControl:
 
     # Print the trend sample response data
     def printTrendSample(self, trendSampleData, temperatureType):
-        print(json.dumps(trendSampleData, indent=2, default=str))
+        # print(json.dumps(trendSampleData, indent=2, default=str))
         print(
             "Controller Version: "
             + str(self.bigHexToInt(trendSampleData["controllerVersion"]))
@@ -1502,7 +1503,109 @@ class NavienSmartControl:
         )
 
     # Send request to set weekly schedule
-    def sendDeviceControlWeeklyScheduleRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, WeeklyDay
-    ):
-        return
+    def sendDeviceControlWeeklyScheduleRequest(self, stateData, WeeklyDay, action):
+        # The state information contains the gatewayID, currentControlChannel,
+        # deviceNumber and all current WeeklyDay schedules. We need to compare
+        # current WeeklyDay schedule with requested modifications and apply as
+        # needed.
+        # Note: Only one schedule entry can be modified at a time.
+
+        # Check if the entry already exists and set a flag
+        foundScheduleEntry = False
+        if "daySequence" in stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1]:
+            for j in stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1][
+                "daySequence"
+            ]:
+                if (
+                    (
+                        stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1][
+                            "daySequence"
+                        ][j]["hour"]
+                        == WeeklyDay["hour"]
+                    )
+                    and (
+                        stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1][
+                            "daySequence"
+                        ][j]["minute"]
+                        == WeeklyDay["minute"]
+                    )
+                    and (
+                        stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1][
+                            "daySequence"
+                        ][j]["isOnOFF"]
+                        == WeeklyDay["isOnOFF"]
+                    )
+                ):
+                    foundScheduleEntry = True
+                    foundIndex = j
+
+        tmpWeeklyDay = self.initWeeklyDay()
+        tmpWeeklyDay["WeeklyDay"] = WeeklyDay["dayOfWeek"]
+
+        if action == "add":
+            if foundScheduleEntry:
+                raise Exception(
+                    "Error: unable to add. Already have matching schedule entry."
+                )
+            else:
+                if (
+                    "daySequence"
+                    in stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1]
+                ):
+                    currentWDCount = len(
+                        stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1][
+                            "daySequence"
+                        ]
+                    )
+                    for i in stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1][
+                        "daySequence"
+                    ]:
+                        tmpWeeklyDay[str(int(i) + 1) + "_Hour"] = stateData[
+                            "daySequences"
+                        ][WeeklyDay["dayOfWeek"] - 1]["daySequence"][i]["hour"]
+                        tmpWeeklyDay[str(int(i) + 1) + "_Minute"] = stateData[
+                            "daySequences"
+                        ][WeeklyDay["dayOfWeek"] - 1]["daySequence"][i]["minute"]
+                        tmpWeeklyDay[str(int(i) + 1) + "_Flag"] = stateData[
+                            "daySequences"
+                        ][WeeklyDay["dayOfWeek"] - 1]["daySequence"][i]["isOnOFF"]
+                else:
+                    currentWDCount = 0
+                tmpWeeklyDay["WeeklyCount"] = currentWDCount + 1
+                tmpWeeklyDay[str(currentWDCount + 1) + "_Hour"] = WeeklyDay["hour"]
+                tmpWeeklyDay[str(currentWDCount + 1) + "_Minute"] = WeeklyDay["minute"]
+                tmpWeeklyDay[str(currentWDCount + 1) + "_Flag"] = WeeklyDay["isOnOFF"]
+        elif action == "delete":
+            if not foundScheduleEntry:
+                raise Exception("Error: unable to delete. No matching schedule entry.")
+            else:
+                dSIndex = 0
+                for c in stateData["daySequences"][WeeklyDay["dayOfWeek"] - 1][
+                    "daySequence"
+                ]:
+                    if c != foundIndex:
+                        dSIndex += 1
+                        tmpWeeklyDay[str(dSIndex) + "_Hour"] = stateData[
+                            "daySequences"
+                        ][WeeklyDay["dayOfWeek"] - 1]["daySequence"][c]["hour"]
+                        tmpWeeklyDay[str(dSIndex) + "_Minute"] = stateData[
+                            "daySequences"
+                        ][WeeklyDay["dayOfWeek"] - 1]["daySequence"][c]["minute"]
+                        tmpWeeklyDay[str(dSIndex) + "_Flag"] = stateData[
+                            "daySequences"
+                        ][WeeklyDay["dayOfWeek"] - 1]["daySequence"][c]["isOnOFF"]
+                tmpWeeklyDay["WeeklyCount"] = dSIndex
+        else:
+            raise Exception("Error: unsupported action " + action)
+
+        # print(json.dumps(tmpWeeklyDay, indent=2, default=str))
+        return self.sendRequest(
+            stateData["deviceID"],
+            stateData["currentChannel"],
+            stateData["deviceNumber"],
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.WEEKLY.value,
+            OnOFFFlag(stateData["weeklyControl"]).value,
+            tmpWeeklyDay,
+        )
