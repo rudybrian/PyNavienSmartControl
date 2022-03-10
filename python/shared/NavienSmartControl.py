@@ -662,7 +662,9 @@ class NavienSmartControl:
         print("Error Code: " + str(errorCD))
         print("Operation Device Number: " + str(stateData["operationDeviceNumber"]))
         print(
-            "Average Calorimeter: " + str(stateData["averageCalorimeter"] / 2.0) + " %"
+            "Average Calorimeter: "
+            + str(round(stateData["averageCalorimeter"] / 2.0, 1))
+            + " %"
         )
         if temperatureType == TemperatureType.CELSIUS.value:
             if stateData["deviceSorting"] in [
@@ -677,13 +679,19 @@ class NavienSmartControl:
             # This needs to be summed for cascaded units
             print(
                 "Current Gas Usage: "
-                + str((self.bigHexToInt(stateData["gasInstantUse"]) * GIUFactor) / 10.0)
+                + str(
+                    round(
+                        (self.bigHexToInt(stateData["gasInstantUse"]) * GIUFactor)
+                        / 10.0,
+                        1,
+                    )
+                )
                 + " kcal"
             )
             # This needs to be summed for cascaded units
             print(
                 "Total Gas Usage: "
-                + str(self.bigHexToInt(stateData["gasAccumulatedUse"]) / 10.0)
+                + str(round(self.bigHexToInt(stateData["gasAccumulatedUse"]) / 10.0, 1))
                 + " m"
                 + u"\u00b3"
             )
@@ -705,7 +713,7 @@ class NavienSmartControl:
             ]:
                 print(
                     "Hot Water Setting Temperature: "
-                    + str(stateData["hotWaterSettingTemperature"] / 2.0)
+                    + str(round(stateData["hotWaterSettingTemperature"] / 2.0, 1))
                     + " "
                     + u"\u00b0"
                     + "C"
@@ -715,33 +723,35 @@ class NavienSmartControl:
                 ):
                     print(
                         "Hot Water Average Temperature: "
-                        + str(stateData["hotWaterAverageTemperature"] / 2.0)
+                        + str(round(stateData["hotWaterAverageTemperature"] / 2.0, 1))
                         + " "
                         + u"\u00b0"
                         + "C"
                     )
                     print(
                         "Inlet Average Temperature: "
-                        + str(stateData["inletAverageTemperature"] / 2.0)
+                        + str(round(stateData["inletAverageTemperature"] / 2.0, 1))
                         + " "
                         + u"\u00b0"
                         + "C"
                     )
                 print(
                     "Hot Water Current Temperature: "
-                    + str(stateData["hotWaterCurrentTemperature"] / 2.0)
+                    + str(round(stateData["hotWaterCurrentTemperature"] / 2.0, 1))
                     + " "
                     + u"\u00b0"
                     + "C"
                 )
                 print(
                     "Hot Water Flow Rate: "
-                    + str(self.bigHexToInt(stateData["hotWaterFlowRate"]) / 10.0)
+                    + str(
+                        round(self.bigHexToInt(stateData["hotWaterFlowRate"]) / 10.0, 1)
+                    )
                     + " LPM"
                 )
                 print(
                     "Inlet Temperature: "
-                    + str(stateData["hotWaterTemperature"] / 2.0)
+                    + str(round(stateData["hotWaterTemperature"] / 2.0, 1))
                     + " "
                     + u"\u00b0"
                     + "C"
@@ -749,14 +759,18 @@ class NavienSmartControl:
                 if "recirculationSettingTemperature" in stateData:
                     print(
                         "Recirculation Setting Temperature: "
-                        + str(stateData["recirculationSettingTemperature"] / 2.0)
+                        + str(
+                            round(stateData["recirculationSettingTemperature"] / 2.0, 1)
+                        )
                         + " "
                         + u"\u00b0"
                         + "C"
                     )
                     print(
                         "Recirculation Current Temperature: "
-                        + str(stateData["recirculationCurrentTemperature"] / 2.0)
+                        + str(
+                            round(stateData["recirculationCurrentTemperature"] / 2.0, 1)
+                        )
                         + " "
                         + u"\u00b0"
                         + "C"
@@ -776,7 +790,7 @@ class NavienSmartControl:
                 # Don't show the setting for cascaded devices, as it isn't applicable
                 print(
                     "Heat Setting Temperature: "
-                    + str(stateData["heatSettingTemperature"] / 2.0)
+                    + str(round(stateData["heatSettingTemperature"] / 2.0, 1))
                     + " "
                     + u"\u00b0"
                     + "C"
@@ -786,28 +800,28 @@ class NavienSmartControl:
                 ):
                     print(
                         "Supply Average Temperature: "
-                        + str(stateData["supplyAverageTemperature"] / 2.0)
+                        + str(round(stateData["supplyAverageTemperature"] / 2.0, 1))
                         + " "
                         + u"\u00b0"
                         + "C"
                     )
                     print(
                         "Return Average Temperature: "
-                        + str(stateData["returnAverageTemperature"] / 2.0)
+                        + str(round(stateData["returnAverageTemperature"] / 2.0, 1))
                         + " "
                         + u"\u00b0"
                         + "C"
                     )
                 print(
                     "Current Supply Water Temperature: "
-                    + str(stateData["currentWorkingFluidTemperature"] / 2.0)
+                    + str(round(stateData["currentWorkingFluidTemperature"] / 2.0, 1))
                     + " "
                     + u"\u00b0"
                     + "C"
                 )
                 print(
                     "Current Return Water Temperature: "
-                    + str(stateData["currentReturnWaterTemperature"] / 2.0)
+                    + str(round(stateData["currentReturnWaterTemperature"] / 2.0), 1)
                     + " "
                     + u"\u00b0"
                     + "C"
@@ -825,15 +839,25 @@ class NavienSmartControl:
             # This needs to be summed for cascaded units
             print(
                 "Current Gas Usage: "
-                + str(self.bigHexToInt(stateData["gasInstantUse"]) * GIUFactor * 3.968)
+                + str(
+                    round(
+                        self.bigHexToInt(stateData["gasInstantUse"])
+                        * GIUFactor
+                        * 3.968,
+                        1,
+                    )
+                )
                 + " BTU"
             )
             # This needs to be summed for cascaded units
             print(
                 "Total Gas Usage: "
                 + str(
-                    (self.bigHexToInt(stateData["gasAccumulatedUse"]) * 35.314667)
-                    / 10.0
+                    round(
+                        (self.bigHexToInt(stateData["gasAccumulatedUse"]) * 35.314667)
+                        / 10.0,
+                        1,
+                    )
                 )
                 + " ft"
                 + u"\u00b3"
@@ -888,7 +912,11 @@ class NavienSmartControl:
                 print(
                     "Hot Water Flow Rate: "
                     + str(
-                        (self.bigHexToInt(stateData["hotWaterFlowRate"]) / 3.785) / 10.0
+                        round(
+                            (self.bigHexToInt(stateData["hotWaterFlowRate"]) / 3.785)
+                            / 10.0,
+                            1,
+                        )
                     )
                     + " GPM"
                 )
@@ -1016,7 +1044,13 @@ class NavienSmartControl:
         if temperatureType == TemperatureType.CELSIUS.value:
             print(
                 "Total Gas Accumulated Sum: "
-                + str(self.bigHexToInt(trendSampleData["totalGasAccumulateSum"]) / 10.0)
+                + str(
+                    round(
+                        self.bigHexToInt(trendSampleData["totalGasAccumulateSum"])
+                        / 10.0,
+                        1,
+                    )
+                )
                 + " m"
                 + u"\u00b3"
             )
@@ -1024,11 +1058,14 @@ class NavienSmartControl:
             print(
                 "Total Gas Accumulated Sum: "
                 + str(
-                    (
-                        self.bigHexToInt(trendSampleData["totalGasAccumulateSum"])
-                        * 35.314667
+                    round(
+                        (
+                            self.bigHexToInt(trendSampleData["totalGasAccumulateSum"])
+                            * 35.314667
+                        )
+                        / 10.0,
+                        1,
                     )
-                    / 10.0
                 )
                 + " ft"
                 + u"\u00b3"
@@ -1117,12 +1154,15 @@ class NavienSmartControl:
                 print(
                     "\t\tTotal Gas Usage: "
                     + str(
-                        self.bigHexToInt(
-                            trendMYData["trendSequences"][i]["trendData"][
-                                "gasAccumulatedUse"
-                            ]
+                        round(
+                            self.bigHexToInt(
+                                trendMYData["trendSequences"][i]["trendData"][
+                                    "gasAccumulatedUse"
+                                ]
+                            )
+                            / 10.0,
+                            1,
                         )
-                        / 10.0
                     )
                     + " m"
                     + u"\u00b3"
@@ -1130,22 +1170,28 @@ class NavienSmartControl:
                 print(
                     "\t\tHot water Accumulated Use: "
                     + str(
-                        self.bigHexToInt(
-                            trendMYData["trendSequences"][i]["trendData"][
-                                "hotWaterAccumulatedUse"
-                            ]
+                        round(
+                            self.bigHexToInt(
+                                trendMYData["trendSequences"][i]["trendData"][
+                                    "hotWaterAccumulatedUse"
+                                ]
+                            )
+                            / 10.0,
+                            1,
                         )
-                        / 10.0
                     )
                     + " L"
                 )
                 print(
                     "\t\tOutdoor Air Max Temperature: "
                     + str(
-                        trendMYData["trendSequences"][i]["trendData"][
-                            "outdoorAirMaxTemperature"
-                        ]
-                        / 2.0
+                        round(
+                            trendMYData["trendSequences"][i]["trendData"][
+                                "outdoorAirMaxTemperature"
+                            ]
+                            / 2.0,
+                            1,
+                        )
                     )
                     + " "
                     + u"\u00b0"
@@ -1154,10 +1200,13 @@ class NavienSmartControl:
                 print(
                     "\t\tOutdoor Air Min Temperature: "
                     + str(
-                        trendMYData["trendSequences"][i]["trendData"][
-                            "outdoorAirMinTemperature"
-                        ]
-                        / 2.0
+                        round(
+                            trendMYData["trendSequences"][i]["trendData"][
+                                "outdoorAirMinTemperature"
+                            ]
+                            / 2.0,
+                            1,
+                        )
                     )
                     + " "
                     + u"\u00b0"
@@ -1167,15 +1216,18 @@ class NavienSmartControl:
                 print(
                     "\t\tTotal Gas Usage: "
                     + str(
-                        (
-                            self.bigHexToInt(
-                                trendMYData["trendSequences"][i]["trendData"][
-                                    "gasAccumulatedUse"
-                                ]
+                        round(
+                            (
+                                self.bigHexToInt(
+                                    trendMYData["trendSequences"][i]["trendData"][
+                                        "gasAccumulatedUse"
+                                    ]
+                                )
+                                * 35.314667
                             )
-                            * 35.314667
+                            / 10.0,
+                            1,
                         )
-                        / 10.0
                     )
                     + " ft"
                     + u"\u00b3"
@@ -1183,15 +1235,18 @@ class NavienSmartControl:
                 print(
                     "\t\tHot water Accumulated Use: "
                     + str(
-                        (
-                            self.bigHexToInt(
-                                trendMYData["trendSequences"][i]["trendData"][
-                                    "hotWaterAccumulatedUse"
-                                ]
+                        round(
+                            (
+                                self.bigHexToInt(
+                                    trendMYData["trendSequences"][i]["trendData"][
+                                        "hotWaterAccumulatedUse"
+                                    ]
+                                )
+                                / 3.785
                             )
-                            / 3.785
+                            / 10.0,
+                            1,
                         )
-                        / 10.0
                     )
                     + " G"
                 )
