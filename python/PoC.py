@@ -51,13 +51,15 @@ for i in range(len(gateways)):
 
     print()
     # Request the info for each connected device
-    for chan in channelInfo:
+    for chan in channelInfo["channel"]:
         if (
-            DeviceSorting(channelInfo[chan].deviceSorting).name
+            DeviceSorting(channelInfo["channel"][chan]["deviceSorting"]).name
             != DeviceSorting.NO_DEVICE.name
         ):
             print("Channel " + chan + " Info:")
-            for deviceNumber in range(1, channelInfo[chan].deviceCount + 1):
+            for deviceNumber in range(
+                1, channelInfo["channel"][chan]["deviceCount"] + 1
+            ):
                 # Request the current state
                 print("Device: " + str(deviceNumber))
                 state = navienSmartControl.sendStateRequest(
@@ -67,7 +69,9 @@ for i in range(len(gateways)):
                 # Print out the current state
                 print("State")
                 print("---------------------------")
-                navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
+                navienSmartControl.printState(
+                    state, channelInfo["channel"][chan]["deviceTempFlag"]
+                )
                 print("---------------------------\n")
 
                 # Request the trend sample data
@@ -79,7 +83,7 @@ for i in range(len(gateways)):
                 print("Trend Sample")
                 print("---------------------------")
                 navienSmartControl.printTrendSample(
-                    trendSample, channelInfo[chan].deviceTempFlag
+                    trendSample, channelInfo["channel"][chan]["deviceTempFlag"]
                 )
                 print("---------------------------\n")
 
@@ -92,7 +96,7 @@ for i in range(len(gateways)):
                 print("Trend Month")
                 print("---------------------------")
                 navienSmartControl.printTrendMY(
-                    trendMonth, channelInfo[chan].deviceTempFlag
+                    trendMonth, channelInfo["channel"][chan]["deviceTempFlag"]
                 )
                 print("---------------------------\n")
 
@@ -105,7 +109,7 @@ for i in range(len(gateways)):
                 print("Trend Year")
                 print("---------------------------")
                 navienSmartControl.printTrendMY(
-                    trendYear, channelInfo[chan].deviceTempFlag
+                    trendYear, channelInfo["channel"][chan]["deviceTempFlag"]
                 )
                 print("---------------------------\n")
 
@@ -209,5 +213,5 @@ for i in range(len(gateways)):
                 ## Print out the current state
                 # print("State")
                 # print("---------------------------")
-                # navienSmartControl.printState(state, channelInfo[chan].deviceTempFlag)
+                # navienSmartControl.printState(state, channelInfo["channel"][chan]["deviceTempFlag"])
                 # print("---------------------------\n")

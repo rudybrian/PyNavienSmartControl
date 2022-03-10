@@ -306,7 +306,7 @@ class NavienSmartControl:
                     ],
                 )
                 for x in range(3):
-                    channelResponseData[str(x + 1)] = channelResponseColumns._make(
+                    tmpChannelResponseData = channelResponseColumns._make(
                         struct.unpack(
                             "B B B B B B B B B B B B B",
                             data[
@@ -315,6 +315,7 @@ class NavienSmartControl:
                             ],
                         )
                     )
+                    channelResponseData[str(x + 1)] = tmpChannelResponseData._asdict()
             else:
                 channelResponseColumns = collections.namedtuple(
                     "response",
@@ -337,7 +338,7 @@ class NavienSmartControl:
                     ],
                 )
                 for x in range(3):
-                    channelResponseData[str(x + 1)] = channelResponseColumns._make(
+                    tmpChannelResponseData = channelResponseColumns._make(
                         struct.unpack(
                             "B B B B B B B B B B B B B B B",
                             data[
@@ -346,7 +347,10 @@ class NavienSmartControl:
                             ],
                         )
                     )
-            return channelResponseData
+                    channelResponseData[str(x + 1)] = tmpChannelResponseData._asdict()
+            tmpChannelResponseData = {"channel": channelResponseData}
+            result = dict(commonResponseData._asdict(), **tmpChannelResponseData)
+            return result
         else:
             raise Exception(
                 "Error: Unknown Channel: An error occurred in the process of parsing channel information; please restart to retry."
@@ -540,52 +544,76 @@ class NavienSmartControl:
 
     # Print Channel Information response data
     def printChannelInformation(self, channelInformation):
-        for chan in range(1, len(channelInformation) + 1):
+        for chan in range(1, len(channelInformation["channel"]) + 1):
             print("Channel:" + str(chan))
-            # for name, value in channelInformation[str(chan)]._asdict().items():
-            #    print('\t' + name + '->' + str(value))
             print(
                 "\tDevice Model Type: "
-                + DeviceSorting(channelInformation[str(chan)].deviceSorting).name
+                + DeviceSorting(
+                    channelInformation["channel"][str(chan)]["deviceSorting"]
+                ).name
             )
-            print("\tDevice Count: " + str(channelInformation[str(chan)].deviceCount))
+            print(
+                "\tDevice Count: "
+                + str(channelInformation["channel"][str(chan)]["deviceCount"])
+            )
             print(
                 "\tTemp Flag: "
-                + TemperatureType(channelInformation[str(chan)].deviceTempFlag).name
+                + TemperatureType(
+                    channelInformation["channel"][str(chan)]["deviceTempFlag"]
+                ).name
             )
             print(
                 "\tMinimum Setting Water Temperature: "
-                + str(channelInformation[str(chan)].minimumSettingWaterTemperature)
+                + str(
+                    channelInformation["channel"][str(chan)][
+                        "minimumSettingWaterTemperature"
+                    ]
+                )
             )
             print(
                 "\tMaximum Setting Water Temperature: "
-                + str(channelInformation[str(chan)].maximumSettingWaterTemperature)
+                + str(
+                    channelInformation["channel"][str(chan)][
+                        "maximumSettingWaterTemperature"
+                    ]
+                )
             )
             print(
                 "\tHeating Minimum Setting Water Temperature: "
                 + str(
-                    channelInformation[str(chan)].heatingMinimumSettingWaterTemperature
+                    channelInformation["channel"][str(chan)][
+                        "heatingMinimumSettingWaterTemperature"
+                    ]
                 )
             )
             print(
                 "\tHeating Maximum Setting Water Temperature: "
                 + str(
-                    channelInformation[str(chan)].heatingMaximumSettingWaterTemperature
+                    channelInformation["channel"][str(chan)][
+                        "heatingMaximumSettingWaterTemperature"
+                    ]
                 )
             )
             print(
                 "\tUse On Demand: "
-                + OnDemandFlag(channelInformation[str(chan)].useOnDemand).name
+                + OnDemandFlag(
+                    channelInformation["channel"][str(chan)]["useOnDemand"]
+                ).name
             )
             print(
                 "\tHeating Control: "
-                + HeatingControl(channelInformation[str(chan)].heatingControl).name
+                + HeatingControl(
+                    channelInformation["channel"][str(chan)]["heatingControl"]
+                ).name
             )
             # Do some different stuff with the wwsdFlag value
             print(
                 "\twwsdFlag: "
                 + WWSDFlag(
-                    (channelInformation[str(chan)].wwsdFlag & WWSDMask.WWSDFLAG.value)
+                    (
+                        channelInformation["channel"][str(chan)]["wwsdFlag"]
+                        & WWSDMask.WWSDFLAG.value
+                    )
                     > 0
                 ).name
             )
@@ -593,7 +621,7 @@ class NavienSmartControl:
                 "\tcommercialLock: "
                 + CommercialLockFlag(
                     (
-                        channelInformation[str(chan)].wwsdFlag
+                        channelInformation["channel"][str(chan)]["wwsdFlag"]
                         & WWSDMask.COMMERCIAL_LOCK.value
                     )
                     > 0
@@ -603,7 +631,7 @@ class NavienSmartControl:
                 "\thotwaterPossibility: "
                 + NFBWaterFlag(
                     (
-                        channelInformation[str(chan)].wwsdFlag
+                        channelInformation["channel"][str(chan)]["wwsdFlag"]
                         & WWSDMask.HOTWATER_POSSIBILITY.value
                     )
                     > 0
@@ -613,7 +641,7 @@ class NavienSmartControl:
                 "\trecirculationPossibility: "
                 + RecirculationFlag(
                     (
-                        channelInformation[str(chan)].wwsdFlag
+                        channelInformation["channel"][str(chan)]["wwsdFlag"]
                         & WWSDMask.RECIRCULATION_POSSIBILITY.value
                     )
                     > 0
@@ -621,27 +649,32 @@ class NavienSmartControl:
             )
             print(
                 "\tHigh Temperature: "
-                + HighTemperature(channelInformation[str(chan)].highTemperature).name
+                + HighTemperature(
+                    channelInformation["channel"][str(chan)]["highTemperature"]
+                ).name
             )
             print(
                 "\tUse Warm Water: "
-                + OnOFFFlag(channelInformation[str(chan)].useWarmWater).name
+                + OnOFFFlag(
+                    channelInformation["channel"][str(chan)]["useWarmWater"]
+                ).name
             )
             # These values are ony populated with firmware version > 1500
-            if hasattr(
-                channelInformation[str(chan)], "minimumSettingRecirculationTemperature"
+            if (
+                "minimumSettingRecirculationTemperature"
+                in channelInformation["channel"][str(chan)]
             ):
                 print(
                     "\tMinimum Recirculation Temperature: "
-                    + channelInformation[
-                        str(chan)
-                    ].minimumSettingRecirculationTemperature
+                    + channelInformation["channel"][str(chan)][
+                        "minimumSettingRecirculationTemperature"
+                    ]
                 )
                 print(
                     "\tMaximum Recirculation Temperature: "
-                    + channelInformation[
-                        str(chan)
-                    ].maximumSettingRecirculationTemperature
+                    + channelInformation["channel"][str(chan)][
+                        "maximumSettingRecirculationTemperature"
+                    ]
                 )
 
     # Print State response data
