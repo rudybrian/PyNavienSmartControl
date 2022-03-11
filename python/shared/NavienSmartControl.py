@@ -487,7 +487,9 @@ class NavienSmartControl:
             trendSampleResponseData = trendSampleResponseColumns._make(
                 struct.unpack("2s 2s B B B B 3s 4s 4s 4s 4s", data[12:39])
             )
-        return trendSampleResponseData._asdict()
+        result = trendSampleResponseData._asdict()
+        result.update(commonResponseData._asdict())
+        return result
 
     # Parse trend month or year response
     def parseTrendMYResponse(self, commonResponseData, data):
@@ -534,13 +536,50 @@ class NavienSmartControl:
             trendSequences[i]["trendData"] = trendData._asdict()
 
         tmpTrendSequences = {"trendSequences": trendSequences}
-        return dict(trendSampleMYResponseData._asdict(), **tmpTrendSequences)
+        result = dict(trendSampleMYResponseData._asdict(), **tmpTrendSequences)
+        result.update(commonResponseData._asdict())
+        return result
 
     # Parse error code response
     def parseErrorCodeResponse(self, commonResponseData, data):
-        print("Run away!")
+        errorResponseColumns = collections.namedtuple(
+            "response",
+            [
+                "controllerVersion",
+                "pannelVersion",
+                "deviceSorting",
+                "deviceCount",
+                "currentChannel",
+                "deviceNumber",
+                "errorFlag",
+                "errorCD",
+            ],
+        )
+        errorResponseData = trendSampleMYResponseColumns._make(
+            struct.unpack("2s 2s B B B B B 2s", data[12:23])
+        )
+        result = errorResponseData._asdict()
+        result.update(commonResponseData._asdict())
+        return result
 
     # ----- Convenience methods for printing response data in human readable form ----- #
+
+    # Master handler for printing specific response data
+    def printResponseHandler(self, responseData, temperatureType):
+        if ControlType(responseData["controlType"]) == ControlType.CHANNEL_INFORMATION:
+            self.printChannelInformation(responseData)
+        elif ControlType(responseData["controlType"]) == ControlType.STATE:
+            self.printState(responseData, temperatureType)
+        elif ControlType(responseData["controlType"]) == ControlType.TREND_SAMPLE:
+            self.printTrendSample(responseData, temperatureType)
+        elif ControlType(responseData["controlType"]) == ControlType.TREND_MONTH:
+            self.printTrendMY(responseData, temperatureType)
+        elif ControlType(responseData["controlType"]) == ControlType.TREND_YEAR:
+            self.printTrendMY(responseData, temperatureType)
+        elif ControlType(responseData["controlType"]) == ControlType.ERROR_CODE:
+            self.printError(responseData, temperatureType)
+        else:
+            raise Exception("Error: unknown controlType in response")
 
     # Print Channel Information response data
     def printChannelInformation(self, channelInformation):
@@ -1307,6 +1346,21 @@ class NavienSmartControl:
                 )
             else:
                 raise Exception("Error: Invalid temperatureType")
+
+    # Print an error response
+    def printError(self, errorData, temperatureType):
+        print(
+            "Controller Version: "
+            + str(self.bigHexToInt(errorData["controllerVersion"]))
+        )
+        print("Panel Version: " + str(self.bigHexToInt(errorData["pannelVersion"])))
+        print("Device Model Type: " + DeviceSorting(errorData["deviceSorting"]).name)
+        print("Device Count: " + str(errorData["deviceCount"]))
+        print("Current Channel: " + str(errorData["currentChannel"]))
+        print("Device Number: " + str(errorData["deviceNumber"]))
+        # not sure how to parse these, so just print them as numbers
+        print("Error Flag: " + str(errorData["errorFlag"]))
+        print("Error Code: " + str(self.bigHexToInt(errorData["errorCD"])))
 
     # Convert from a list of big endian hex byte array or string to an integer
     def bigHexToInt(self, hex):
