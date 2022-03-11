@@ -137,6 +137,7 @@ for i in range(len(gateways)):
                 #     binascii.unhexlify(gateways[i]["GID"]),
                 #     int(chan),
                 #     deviceNumber,
+                #     channelInfo,
                 #     OnOFFFlag.ON.value,
                 # )
 
@@ -146,6 +147,7 @@ for i in range(len(gateways)):
                 #     binascii.unhexlify(gateways[i]["GID"]),
                 #     int(chan),
                 #     deviceNumber,
+                #     channelInfo,
                 # )
 
                 ## Turn weekly schedule on
@@ -164,6 +166,7 @@ for i in range(len(gateways)):
                 #     binascii.unhexlify(gateways[i]["GID"]),
                 #     int(chan),
                 #     deviceNumber,
+                #     channelInfo,
                 #     tempToSet,
                 # )
 
@@ -174,6 +177,7 @@ for i in range(len(gateways)):
                 #     binascii.unhexlify(gateways[i]["GID"]),
                 #     int(chan),
                 #     deviceNumber,
+                #     channelInfo,
                 #     tempToSet,
                 # )
 
@@ -184,6 +188,7 @@ for i in range(len(gateways)):
                 #     binascii.unhexlify(gateways[i]["GID"]),
                 #     int(chan),
                 #     deviceNumber,
+                #     channelInfo,
                 #     tempToSet,
                 # )
 

@@ -1556,33 +1556,57 @@ class NavienSmartControl:
 
     # Send device heat control request
     def sendHeatControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, heatState
+        self, gatewayID, currentControlChannel, deviceNumber, channelData, heatState
     ):
-        return self.sendRequest(
-            gatewayID,
-            currentControlChannel,
-            deviceNumber,
-            ControlSorting.CONTROL.value,
-            ControlType.UNKNOWN.value,
-            DeviceControl.HEAT.value,
-            OnOFFFlag(heatState).value,
-            self.initWeeklyDay(),
-        )
+        if (
+            NFBWaterFlag(
+                (
+                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    & WWSDMask.HOTWATER_POSSIBILITY.value
+                )
+                > 0
+            )
+            == NFBWaterFlag.OFF
+        ):
+            raise Exception("Error: Heat is disabled.")
+        else:
+            return self.sendRequest(
+                gatewayID,
+                currentControlChannel,
+                deviceNumber,
+                ControlSorting.CONTROL.value,
+                ControlType.UNKNOWN.value,
+                DeviceControl.HEAT.value,
+                OnOFFFlag(heatState).value,
+                self.initWeeklyDay(),
+            )
 
     # Send device on demand control request
     def sendOnDemandControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber
+        self, gatewayID, currentControlChannel, deviceNumber, channelData
     ):
-        return self.sendRequest(
-            gatewayID,
-            currentControlChannel,
-            deviceNumber,
-            ControlSorting.CONTROL.value,
-            ControlType.UNKNOWN.value,
-            DeviceControl.ON_DEMAND.value,
-            OnOFFFlag.ON.value,
-            self.initWeeklyDay(),
-        )
+        if (
+            RecirculationFlag(
+                (
+                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    & WWSDMask.RECIRCULATION_POSSIBILITY.value
+                )
+                > 0
+            )
+            == RecirculationFlag.OFF
+        ):
+            raise Exception("Error: Recirculation is disabled.")
+        else:
+            return self.sendRequest(
+                gatewayID,
+                currentControlChannel,
+                deviceNumber,
+                ControlSorting.CONTROL.value,
+                ControlType.UNKNOWN.value,
+                DeviceControl.ON_DEMAND.value,
+                OnOFFFlag.ON.value,
+                self.initWeeklyDay(),
+            )
 
     # Send device weekly control schedule (enable or disable weekly schedule)
     def sendDeviceWeeklyControlRequest(
@@ -1601,48 +1625,111 @@ class NavienSmartControl:
 
     # Send device water temperature control request
     def sendWaterTempControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, tempVal
+        self, gatewayID, currentControlChannel, deviceNumber, channelData, tempVal
     ):
-        return self.sendRequest(
-            gatewayID,
-            currentControlChannel,
-            deviceNumber,
-            ControlSorting.CONTROL.value,
-            ControlType.UNKNOWN.value,
-            DeviceControl.WATER_TEMPERATURE.value,
-            tempVal,
-            self.initWeeklyDay(),
-        )
+        if (
+            tempval
+            > channelData["channel"][currentControlChannel][
+                "maximumSettingWaterTemperature"
+            ]
+        ) or (
+            tempval
+            < channelData["channel"][currentControlChannel][
+                "minimumSettingWaterTemperature"
+            ]
+        ):
+            raise Exception("Error: Invalid tempVal requested.")
+        else:
+            return self.sendRequest(
+                gatewayID,
+                currentControlChannel,
+                deviceNumber,
+                ControlSorting.CONTROL.value,
+                ControlType.UNKNOWN.value,
+                DeviceControl.WATER_TEMPERATURE.value,
+                tempVal,
+                self.initWeeklyDay(),
+            )
 
     # Send device heating water temperature control request
     def sendHeatingWaterTempControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, tempVal
+        self, gatewayID, currentControlChannel, deviceNumber, channelData, tempVal
     ):
-        return self.sendRequest(
-            gatewayID,
-            currentControlChannel,
-            deviceNumber,
-            ControlSorting.CONTROL.value,
-            ControlType.UNKNOWN.value,
-            DeviceControl.HEATING_WATER_TEMPERATURE.value,
-            tempVal,
-            self.initWeeklyDay(),
-        )
+        if (
+            NFBWaterFlag(
+                (
+                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    & WWSDMask.HOTWATER_POSSIBILITY.value
+                )
+                > 0
+            )
+            == NFBWaterFlag.OFF
+        ):
+            raise Exception("Error: Heat is disabled. Unable to set temperature")
+        elif (
+            tempval
+            > channelData["channel"][currentControlChannel][
+                "heatingMaximumSettingWaterTemperature"
+            ]
+        ) or (
+            tempval
+            < channelData["channel"][currentControlChannel][
+                "heatingMinimumSettingWaterTemperature"
+            ]
+        ):
+            raise Exception("Error: Invalid tempVal requested.")
+        else:
+            return self.sendRequest(
+                gatewayID,
+                currentControlChannel,
+                deviceNumber,
+                ControlSorting.CONTROL.value,
+                ControlType.UNKNOWN.value,
+                DeviceControl.HEATING_WATER_TEMPERATURE.value,
+                tempVal,
+                self.initWeeklyDay(),
+            )
 
     # Send recirculation temperature control request
     def sendRecirculationTempControlRequest(
-        self, gatewayID, currentControlChannel, deviceNumber, tempVal
+        self, gatewayID, currentControlChannel, deviceNumber, channelData, tempVal
     ):
-        return self.sendRequest(
-            gatewayID,
-            currentControlChannel,
-            deviceNumber,
-            ControlSorting.CONTROL.value,
-            ControlType.UNKNOWN.value,
-            DeviceControl.RECIRCULATION_TEMPERATURE.value,
-            tempVal,
-            self.initWeeklyDay(),
-        )
+        if (
+            RecirculationFlag(
+                (
+                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    & WWSDMask.RECIRCULATION_POSSIBILITY.value
+                )
+                > 0
+            )
+            == RecirculationFlag.OFF
+        ):
+            raise Exception(
+                "Error: Recirculation is disabled. Unable to set temperature"
+            )
+        elif (
+            tempval
+            > channelData["channel"][currentControlChannel][
+                "maximumSettingWaterTemperature"
+            ]
+        ) or (
+            tempval
+            < channelData["channel"][currentControlChannel][
+                "minimumSettingWaterTemperature"
+            ]
+        ):
+            raise Exception("Error: Invalid tempVal requested.")
+        else:
+            return self.sendRequest(
+                gatewayID,
+                currentControlChannel,
+                deviceNumber,
+                ControlSorting.CONTROL.value,
+                ControlType.UNKNOWN.value,
+                DeviceControl.RECIRCULATION_TEMPERATURE.value,
+                tempVal,
+                self.initWeeklyDay(),
+            )
 
     # Send request to set weekly schedule
     def sendDeviceControlWeeklyScheduleRequest(self, stateData, WeeklyDay, action):
@@ -1651,6 +1738,9 @@ class NavienSmartControl:
         # current WeeklyDay schedule with requested modifications and apply as
         # needed.
         # Note: Only one schedule entry can be modified at a time.
+
+        if (WeeklyDay["hour"] > 23) or (WeeklyDay["minute"] > 59):
+            raise Exception("Error: Invalid weeklyday schedule time requested")
 
         # Check if the entry already exists and set a flag
         foundScheduleEntry = False
