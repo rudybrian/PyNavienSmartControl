@@ -37,58 +37,61 @@ if __name__ == "__main__":
 
     # Get an initialised parser object.
     parser = argparse.ArgumentParser(
-        description="Control a Navien boiler.", prefix_chars="-/"
+        description="Control a Navien tankless water heater, combi-boiler or boiler connected via NaviLink.",
+        prefix_chars="-/",
     )
     parser.add_argument(
-        "/roomtemp",
-        "-roomtemp",
-        type=float,
-        help="Set the indoor room temperature to this value.",
+        "-gatewayid",
+        help="Specify gatewayID (required when multiple gateways are used)",
     )
     parser.add_argument(
-        "/heatingtemp",
+        "-channel",
+        type=int,
+        help="Specify channel (required when multiple channels are used)",
+    )
+    parser.add_argument(
+        "-devicenumber",
+        type=int,
+        help="Specify device number (required when multiple devices on a common channel are used)",
+    )
+    parser.add_argument(
+        "-recirctemp", type=int, help="Set the recirculation temperature to this value."
+    )
+    parser.add_argument(
         "-heatingtemp",
-        type=float,
+        type=int,
         help="Set the central heating temperature to this value.",
     )
     parser.add_argument(
-        "/hotwatertemp",
-        "-hotwatertemp",
-        type=float,
-        help="Set the hot water temperature to this value.",
+        "-hotwatertemp", type=int, help="Set the hot water temperature to this value."
     )
     parser.add_argument(
-        "/heatlevel",
-        "-heatlevel",
-        type=int,
-        choices={1, 2, 3},
-        help="Set the boiler's heat level.",
+        "-power", choices={"on", "off"}, help="Turn the power on or off."
+    )
+    parser.add_argument("-heat", choices={"on", "off"}, help="Turn the heat on or off.")
+    parser.add_argument("-ondemand", action="store_true", help="Trigger On Demand.")
+    parser.add_argument(
+        "-schedule",
+        choices={"on", "off"},
+        help="Turn the weekly recirculation schedule on or off.",
     )
     parser.add_argument(
-        "/status",
-        "-status",
+        "-summary", action="store_true", help="Show the device's extended status."
+    )
+    parser.add_argument(
+        "-trendsample",
         action="store_true",
-        help="Show the boiler's simple status.",
+        help="Show the device's trend sample report.",
     )
     parser.add_argument(
-        "/summary",
-        "-summary",
-        action="store_true",
-        help="Show the boiler's extended status.",
+        "-trendmonth", action="store_true", help="Show the device's trend month report."
     )
     parser.add_argument(
-        "/mode",
-        "-mode",
-        choices={
-            "PowerOff",
-            "PowerOn",
-            "HolidayOn",
-            "HolidayOff",
-            "SummerOn",
-            "SummerOff",
-            "QuickHotWater",
-        },
-        help="Set the boiler's mode.",
+        "-trendyear", action="store_true", help="Show the device's trend year report."
+    )
+    parser.add_argument(
+        "-updateschedule",
+        help="Update recirculation schedule for given time, day and state",
     )
 
     # The following function provides arguments for calling functions when command line switches are used.
@@ -113,21 +116,119 @@ if __name__ == "__main__":
         # Perform the login.
         gateways = navienSmartControl.login()
 
+        myGatewayID = 0
+        # If a gateway is specified, make sure it is in the list
+        if args.gatewayid:
+            foundGateway = False
+            for i in range(len(gateways)):
+                if args.gatewayid == gateways[i]["GID"]:
+                    myGatewayID = i
+                    foundGateway = True
+                    break
+            if not foundGateway:
+                raise ValueError("No such gatewayID " + args.gatewayid)
+        elif len(gateways) > 1:
+            if not args.summary:
+                raise ValueError(
+                    "Must specify gatewayID when more than one is available. View summary to see list of gatewayIDs."
+                )
+
+        myChannel = 1
+        # If a channel is specified, ensure that it has a device connected
+        channelInfo = navienSmartControl.connect(gateways[myGatewayID]["GID"])
+        channels = 0
+        if args.channel:
+            if (
+                DeviceSorting(
+                    channelInfo["channel"][str(args.channel)]["deviceSorting"]
+                ).name
+                == DeviceSorting.NO_DEVICE.name
+            ):
+                raise ValueError(
+                    "No device detected on channel "
+                    + str(args.channel)
+                    + " on gatewayID "
+                    + gateways[myGatewayID]["GID"]
+                )
+            else:
+                myChannel = str(args.channel)
+                channels = 1
+        else:
+            # No channel is specified, so find the one that has a device connected if any
+            foundChannel = False
+            for chan in channelInfo["channel"]:
+                if (
+                    DeviceSorting(channelInfo["channel"][chan]["deviceSorting"]).name
+                    != DeviceSorting.NO_DEVICE.name
+                ):
+                    myChannel = chan
+                    if foundChannel:
+                        if not args.summary:
+                            raise ValueError(
+                                "Must specify channel when more than one device is connected. View summary to see list of devicenumbers."
+                            )
+                    foundChannel = True
+                    channels += channels
+            if not foundChannel:
+                raise ValueError(
+                    "No device detected on any channel on gatewayID "
+                    + gateways[myGatewayID]["GID"]
+                )
+
+        myDeviceNumber = 1
+        # If a devicenumber is specified, make sure it is present
+        if args.devicenumber:
+            if args.devicenumber > channelInfo["channel"][myChannel]["deviceCount"]:
+                raise ValueError(
+                    "Devicenumber "
+                    + str(args.devicenumber)
+                    + " not found on channel "
+                    + str(myChannel)
+                    + " on gatewayID "
+                    + gateways[myGatewayID]["GID"]
+                )
+            else:
+                myDeviceNumber = args.devicenumber
+        elif channelInfo["channel"][myChannel]["deviceCount"] > 1:
+            if not args.summary:
+                raise ValueError(
+                    "Must specify devicenumber when more than one is available. View summary to see list of devicenumbers."
+                )
+
+        print(
+            "GatewayID: "
+            + str(myGatewayID)
+            + ", channel: "
+            + str(myChannel)
+            + ", deviceNumber:"
+            + str(myDeviceNumber)
+        )
+
         # We can provide a full summary.
         if args.summary:
-            for i in range(len(gateways)):
-                # Print out the gateway list information.
-                print("---------------------------")
-                print("Device ID: " + gateways[i]["GID"])
-                print("Nickname: " + gateways[i]["NickName"])
-                print("State: " + gateways[i]["State"])
-                print("Connected: " + gateways[i]["ConnectionTime"])
-                print("Server IP Address: " + gateways[i]["ServerIP"])
-                print("Server TCP Port Number: " + gateways[i]["ServerPort"])
-                print("---------------------------\n")
+            if (len(gateways) > 1) and (not args.gatewayid):
+                # There is more than one gateway, and no gateway was specified, print all the gateways
+                for i in range(len(gateways)):
+                    # Print out the gateway list information.
+                    print("---------------------------")
+                    print("Device ID: " + gateways[i]["GID"])
+                    print("Nickname: " + gateways[i]["NickName"])
+                    print("State: " + gateways[i]["State"])
+                    print("Connected: " + gateways[i]["ConnectionTime"])
+                    print("Server IP Address: " + gateways[i]["ServerIP"])
+                    print("Server TCP Port Number: " + gateways[i]["ServerPort"])
+                    print("---------------------------\n")
+                print("Specify a gateway to view channel details.")
 
-                # Connect to the socket.
-                channelInfo = navienSmartControl.connect(gateways[i]["GID"])
+            else:
+                print("---------------------------")
+                print("Device ID: " + gateways[myGatewayID]["GID"])
+                print("Nickname: " + gateways[myGatewayID]["NickName"])
+                print("State: " + gateways[myGatewayID]["State"])
+                print("Connected: " + gateways[myGatewayID]["ConnectionTime"])
+                print("Server IP Address: " + gateways[myGatewayID]["ServerIP"])
+                print("Server TCP Port Number: " + gateways[myGatewayID]["ServerPort"])
+                print("---------------------------\n")
 
                 # Print the channel info
                 print("Channel Info")
@@ -136,23 +237,24 @@ if __name__ == "__main__":
                 print("---------------------------\n")
 
                 print()
-                # Request the info for each connected device
-                for chan in channelInfo["channel"]:
+                if (channels > 1) and (not args.channel):
+                    print("Specify a channel to view device details.")
+                else:
                     if (
                         DeviceSorting(
-                            channelInfo["channel"][chan]["deviceSorting"]
+                            channelInfo["channel"][myChannel]["deviceSorting"]
                         ).name
                         != DeviceSorting.NO_DEVICE.name
                     ):
-                        print("Channel " + chan + " Info:")
+                        print("Channel " + str(myChannel) + " Info:")
                         for deviceNumber in range(
-                            1, channelInfo["channel"][chan]["deviceCount"] + 1
+                            1, channelInfo["channel"][myChannel]["deviceCount"] + 1
                         ):
                             # Request the current state
                             print("Device: " + str(deviceNumber))
                             state = navienSmartControl.sendStateRequest(
-                                binascii.unhexlify(gateways[i]["GID"]),
-                                int(chan),
+                                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                                int(myChannel),
                                 deviceNumber,
                             )
 
@@ -160,81 +262,21 @@ if __name__ == "__main__":
                             print("State")
                             print("---------------------------")
                             navienSmartControl.printResponseHandler(
-                                state, channelInfo["channel"][chan]["deviceTempFlag"]
+                                state,
+                                channelInfo["channel"][myChannel]["deviceTempFlag"],
                             )
                             print("---------------------------\n")
-
-            print()
-
-        # We provide a quick status.
-        if args.status:
-
-            print("Current Mode: ", end="")
-            if homeState.currentMode == ModeState.POWER_OFF.value:
-                print("Powered Off")
-            elif homeState.currentMode == ModeState.GOOUT_ON.value:
-                print("Holiday Mode")
-            elif homeState.currentMode == ModeState.INSIDE_HEAT.value:
-                print("Room Temperature Control")
-            elif homeState.currentMode == ModeState.ONDOL_HEAT.value:
-                print("Central Heating Control")
-            elif homeState.currentMode == ModeState.SIMPLE_RESERVE.value:
-                print("Heating Inteval")
-            elif homeState.currentMode == ModeState.CIRCLE_RESERVE.value:
-                print("24 Hour Program")
-            elif homeState.currentMode == ModeState.HOTWATER_ON.value:
-                print("Hot Water Only")
-            else:
-                print(str(homeState.currentMode))
-            print(
-                "Current Operation: "
-                + (
-                    "Active"
-                    if homeState.operateMode & OperateMode.ACTIVE.value
-                    else "Inactive"
-                )
-            )
-            print()
-
-            print(
-                "Room Temperature : "
-                + str(
-                    navienSmartControl.getTemperatureFromByte(
-                        homeState.currentInsideTemp
-                    )
-                )
-                + " °C"
-            )
-            print()
-
-            if homeState.currentMode == ModeState.INSIDE_HEAT.value:
-                print(
-                    "Inside Heating Temperature: "
-                    + str(
-                        navienSmartControl.getTemperatureFromByte(
-                            homeState.insideHeatTemp
+                            if (
+                                channelInfo["channel"][myChannel]["deviceCount"] > 1
+                            ) and (not args.devicenumber):
+                                print(
+                                    "Specify a devicenumber to select a specific device."
+                                )
+                    else:
+                        raise ValueError(
+                            "No device detected on channel " + str(myChannel)
                         )
-                    )
-                    + " °C"
-                )
-            elif homeState.currentMode == ModeState.ONDOL_HEAT.value:
-                print(
-                    "Central Heating Temperature: "
-                    + str(
-                        navienSmartControl.getTemperatureFromByte(
-                            homeState.ondolHeatTemp
-                        )
-                    )
-                    + " °C"
-                )
-
-            print(
-                "Hot Water Set Temperature : "
-                + str(
-                    navienSmartControl.getTemperatureFromByte(homeState.hotWaterSetTemp)
-                )
-                + " °C"
-            )
+            print()
 
         # Change the mode.
         if args.mode:
