@@ -290,18 +290,12 @@ if __name__ == "__main__":
         # Change the recirculation temperature.
         if args.recirctemp:
             # Send the request
-            navienSmartControl.sendRecirculationTempControlRequest(
+            stateData = navienSmartControl.sendRecirculationTempControlRequest(
                 binascii.unhexlify(gateways[myGatewayID]["GID"]),
                 int(myChannel),
                 myDeviceNumber,
                 channelInfo,
                 args.recirctemp,
-            )
-            # view the state after submitting the request
-            stateData = navienSmartControl.sendStateRequest(
-                binascii.unhexlify(gateways[myGatewayID]["GID"]),
-                int(myChannel),
-                myDeviceNumber,
             )
             if ControlType(stateData["controlType"]) == ControlType.STATE:
                 if "recirculationSettingTemperature" in stateData:
@@ -349,18 +343,12 @@ if __name__ == "__main__":
         # Set the central heating temperature.
         if args.heatingtemp:
             # Send the request
-            navienSmartControl.sendHeatingWaterTempControlRequest(
+            stateData = navienSmartControl.sendHeatingWaterTempControlRequest(
                 binascii.unhexlify(gateways[myGatewayID]["GID"]),
                 int(myChannel),
                 myDeviceNumber,
                 channelInfo,
                 args.heatingtemp,
-            )
-            # view the state after submitting the request
-            stateData = navienSmartControl.sendStateRequest(
-                binascii.unhexlify(gateways[myGatewayID]["GID"]),
-                int(myChannel),
-                myDeviceNumber,
             )
             if ControlType(stateData["controlType"]) == ControlType.STATE:
                 if (
@@ -398,18 +386,12 @@ if __name__ == "__main__":
         # Set the hot water temperature.
         if args.hotwatertemp:
             # Send the request
-            navienSmartControl.sendWaterTempControlRequest(
+            stateData = navienSmartControl.sendWaterTempControlRequest(
                 binascii.unhexlify(gateways[myGatewayID]["GID"]),
                 int(myChannel),
                 myDeviceNumber,
                 channelInfo,
                 args.hotwatertemp,
-            )
-            # view the state after submitting the request
-            stateData = navienSmartControl.sendStateRequest(
-                binascii.unhexlify(gateways[myGatewayID]["GID"]),
-                int(myChannel),
-                myDeviceNumber,
             )
             if ControlType(stateData["controlType"]) == ControlType.STATE:
                 if (
@@ -446,31 +428,113 @@ if __name__ == "__main__":
 
         # Set the power on or off
         if args.power:
-            print("Run away!")
+            stateData = navienSmartControl.sendPowerControlRequest(
+                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                int(myChannel),
+                myDeviceNumber,
+                OnOFFFlag[(args.power).upper()].value,
+            )
+            if "powerStatus" in stateData:
+                print(
+                    "Power status is now "
+                    + (OnOFFFlag(stateData["powerStatus"]).name).lower()
+                )
+            else:
+                # We didn't receive the expected response, it's probably an error. Let the print handler deal with it.
+                navienSmartControl.printResponseHandler(
+                    stateData, channelInfo["channel"][str(myChannel)]["deviceTempFlag"]
+                )
 
         # Set the heat on or off
         if args.heat:
-            print("Run away!")
+            stateData = navienSmartControl.sendHeatControlRequest(
+                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                int(myChannel),
+                myDeviceNumber,
+                channelInfo,
+                OnOFFFlag[(args.heat).upper()].value,
+            )
+            if "heatStatus" in stateData:
+                print(
+                    "Heat status is now "
+                    + (OnOFFFlag(stateData["heatStatus"]).name).lower()
+                )
+            else:
+                # We didn't receive the expected response, it's probably an error. Let the print handler deal with it.
+                navienSmartControl.printResponseHandler(
+                    stateData, channelInfo["channel"][str(myChannel)]["deviceTempFlag"]
+                )
 
         # Set on demand on or off
         if args.ondemand:
-            print("Run away!")
+            stateData = navienSmartControl.sendOnDemandControlRequest(
+                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                int(myChannel),
+                myDeviceNumber,
+                channelInfo,
+            )
+            if "useOnDemand" in stateData:
+                print(
+                    "On Demand status is now "
+                    + (OnOFFFlag(stateData["useOnDemand"]).name).lower()
+                )
+            else:
+                # We didn't receive the expected response, it's probably an error. Let the print handler deal with it.
+                navienSmartControl.printResponseHandler(
+                    stateData, channelInfo["channel"][str(myChannel)]["deviceTempFlag"]
+                )
 
         # Set the weekly recirculation schedule on or off
         if args.schedule:
-            print("Run away!")
+            stateData = navienSmartControl.sendDeviceWeeklyControlRequest(
+                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                int(myChannel),
+                myDeviceNumber,
+                OnOFFFlag[(args.schedule).upper()].value,
+            )
+            if "weeklyControl" in stateData:
+                print(
+                    "Weekly schedule control is now "
+                    + (OnOFFFlag(stateData["weeklyControl"]).name).lower()
+                )
+            else:
+                # We didn't receive the expected response, it's probably an error. Let the print handler deal with it.
+                navienSmartControl.printResponseHandler(
+                    stateData, channelInfo["channel"][str(myChannel)]["deviceTempFlag"]
+                )
 
         # Print the trend sample info
         if args.trendsample:
-            print("Run away!")
+            trendSample = navienSmartControl.sendTrendSampleRequest(
+                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                int(myChannel),
+                myDeviceNumber,
+            )
+            navienSmartControl.printResponseHandler(
+                trendSample, channelInfo["channel"][str(myChannel)]["deviceTempFlag"]
+            )
 
         # Print the trend month info
         if args.trendmonth:
-            print("Run away!")
+            trendMonth = navienSmartControl.sendTrendMonthRequest(
+                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                int(myChannel),
+                myDeviceNumber,
+            )
+            navienSmartControl.printResponseHandler(
+                trendMonth, channelInfo["channel"][str(myChannel)]["deviceTempFlag"]
+            )
 
         # Print the trend year info
         if args.trendyear:
-            print("Run away!")
+            trendYear = navienSmartControl.sendTrendYearRequest(
+                binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                int(myChannel),
+                myDeviceNumber,
+            )
+            navienSmartControl.printResponseHandler(
+                trendYear, channelInfo["channel"][str(myChannel)]["deviceTempFlag"]
+            )
 
         # Update recirculation schedule
         if args.updateschedule:
