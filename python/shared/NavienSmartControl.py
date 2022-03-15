@@ -1561,7 +1561,7 @@ class NavienSmartControl:
         if (
             NFBWaterFlag(
                 (
-                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    channelData["channel"][str(currentControlChannel)]["wwsdFlag"]
                     & WWSDMask.HOTWATER_POSSIBILITY.value
                 )
                 > 0
@@ -1588,7 +1588,7 @@ class NavienSmartControl:
         if (
             RecirculationFlag(
                 (
-                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    channelData["channel"][str(currentControlChannel)]["wwsdFlag"]
                     & WWSDMask.RECIRCULATION_POSSIBILITY.value
                 )
                 > 0
@@ -1628,13 +1628,13 @@ class NavienSmartControl:
         self, gatewayID, currentControlChannel, deviceNumber, channelData, tempVal
     ):
         if (
-            tempval
-            > channelData["channel"][currentControlChannel][
+            tempVal
+            > channelData["channel"][str(currentControlChannel)][
                 "maximumSettingWaterTemperature"
             ]
         ) or (
-            tempval
-            < channelData["channel"][currentControlChannel][
+            tempVal
+            < channelData["channel"][str(currentControlChannel)][
                 "minimumSettingWaterTemperature"
             ]
         ):
@@ -1658,7 +1658,7 @@ class NavienSmartControl:
         if (
             NFBWaterFlag(
                 (
-                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    channelData["channel"][str(currentControlChannel)]["wwsdFlag"]
                     & WWSDMask.HOTWATER_POSSIBILITY.value
                 )
                 > 0
@@ -1667,13 +1667,13 @@ class NavienSmartControl:
         ):
             raise Exception("Error: Heat is disabled. Unable to set temperature")
         elif (
-            tempval
-            > channelData["channel"][currentControlChannel][
+            tempVal
+            > channelData["channel"][str(currentControlChannel)][
                 "heatingMaximumSettingWaterTemperature"
             ]
         ) or (
-            tempval
-            < channelData["channel"][currentControlChannel][
+            tempVal
+            < channelData["channel"][str(currentControlChannel)][
                 "heatingMinimumSettingWaterTemperature"
             ]
         ):
@@ -1697,7 +1697,7 @@ class NavienSmartControl:
         if (
             RecirculationFlag(
                 (
-                    channelData["channel"][currentControlChannel]["wwsdFlag"]
+                    channelData["channel"][str(currentControlChannel)]["wwsdFlag"]
                     & WWSDMask.RECIRCULATION_POSSIBILITY.value
                 )
                 > 0
@@ -1708,13 +1708,13 @@ class NavienSmartControl:
                 "Error: Recirculation is disabled. Unable to set temperature"
             )
         elif (
-            tempval
-            > channelData["channel"][currentControlChannel][
+            tempVal
+            > channelData["channel"][str(currentControlChannel)][
                 "maximumSettingWaterTemperature"
             ]
         ) or (
-            tempval
-            < channelData["channel"][currentControlChannel][
+            tempVal
+            < channelData["channel"][str(currentControlChannel)][
                 "minimumSettingWaterTemperature"
             ]
         ):
