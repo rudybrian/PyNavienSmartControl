@@ -92,8 +92,22 @@ if __name__ == "__main__":
         "-trendyear", action="store_true", help="Show the device's trend year report."
     )
     parser.add_argument(
-        "-updateschedule",
-        help="Update recirculation schedule for given time, day and state",
+        "-modifyschedule",
+        choices={"add", "delete"},
+        help="Modify recirculation schedule. Requires scheduletime, scheduleday and schedulestate",
+    )
+    parser.add_argument(
+        "-scheduletime", help="Modify schedule for given time in format HH:MM."
+    )
+    parser.add_argument(
+        "-scheduleday",
+        choices={"sun", "mon", "tue", "wed", "thu", "fri", "sat"},
+        help="Modify schedule for given day of week.",
+    )
+    parser.add_argument(
+        "-schedulestate",
+        choices={"on", "off"},
+        help="Modify schedule with given state.",
     )
 
     # The following function provides arguments for calling functions when command line switches are used.
@@ -537,8 +551,36 @@ if __name__ == "__main__":
             )
 
         # Update recirculation schedule
-        if args.updateschedule:
-            print("Run away!")
+        if args.modifyschedule:
+            if args.scheduletime and args.scheduleday and args.schedulestate:
+                hourMin = (args.scheduletime).split(":", 1)
+                if (int(hourMin[0]) < 24) and (int(hourMin[1]) < 60):
+                    weeklyDay = {
+                        "dayOfWeek": DayOfWeek[(args.scheduleday).upper()].value,
+                        "hour": int(hourMin[0]),
+                        "minute": int(hourMin[1]),
+                        "isOnOFF": OnOFFFlag[(args.schedulestate).upper()].value,
+                    }
+                    currentState = navienSmartControl.sendStateRequest(
+                        binascii.unhexlify(gateways[myGatewayID]["GID"]),
+                        int(myChannel),
+                        myDeviceNumber,
+                    )
+                    stateData = navienSmartControl.sendDeviceControlWeeklyScheduleRequest(
+                        currentState, weeklyDay, args.modifyschedule
+                    )
+                    navienSmartControl.printResponseHandler(
+                        stateData,
+                        channelInfo["channel"][str(myChannel)]["deviceTempFlag"],
+                    )
+                else:
+                    raise ValueError(
+                        "Invalid time specified: " + args.scheduletime + "."
+                    )
+            else:
+                raise ValueError(
+                    "Must supply values for modifyschedule, scheduletime, scheduleday and schedulestate."
+                )
 
         # finished parsing everything, just exit
         sys.exit("Done")
