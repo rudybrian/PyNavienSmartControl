@@ -1,6 +1,22 @@
-#!/usr/bin/env python
+""" 
+This module makes it possible to interact with Navien tankless water heater, 
+combi-boiler or boiler connected via NaviLink.
 
-# Third party library; "pip install requests" if getting import errors.
+Please refer to the documentation provided in the README.md,
+which can be found at https://github.com/rudybrian/PyNavienSmartControl/
+
+Note: "pip install requests" if getting import errors.
+"""
+
+__version__ = "1.0"
+__author__ = "Brian Rudy"
+__email__ = "brudy@praecogito.com"
+__credits__ = ["matthew1471", "Gary T. Giesen"]
+__date__ = "3/15/2022"
+__license__ = "GPL"
+
+
+# Third party library
 import requests
 
 # We use raw sockets.
@@ -173,7 +189,7 @@ class NavienSmartControl:
         self.connection = None
 
     def login(self):
-        # Login.
+        """Login to the REST API"""
         response = requests.post(
             NavienSmartControl.navienWebServer + "/api/requestDeviceList",
             headers=NavienSmartControl.stealthyHeaders,
@@ -183,8 +199,8 @@ class NavienSmartControl:
         # If an error occurs this will raise it, otherwise it returns the gateway list.
         return self.handleResponse(response)
 
-    # HTTP response handler
     def handleResponse(self, response):
+        """HTTP response handler"""
         # We need to check for the HTTP response code before attempting to parse the data
         if response.status_code != 200:
             print(response.text)
@@ -209,8 +225,8 @@ class NavienSmartControl:
 
         return gateway_data
 
-    # Connect to the binary API service
     def connect(self, gatewayID):
+        """Connect to the binary API service"""
 
         # Construct a socket object.
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -231,8 +247,12 @@ class NavienSmartControl:
         # Return the parsed data.
         return self.parseResponse(data)
 
-    # Main handler for parsing responses from the binary protocol
     def parseResponse(self, data):
+        """
+        Main handler for handling responses from the binary protocol.
+
+        This function passes on the response data to the appopriate response-specific parsing function.
+        """
         # The response is returned with a fixed header for the first 12 bytes
         commonResponseColumns = collections.namedtuple(
             "response",
@@ -272,8 +292,8 @@ class NavienSmartControl:
 
         return retval
 
-    # Parse channel information response
     def parseChannelInformationResponse(self, commonResponseData, data):
+        """Parse channel information response"""
         # This tells us which serial channels are in use
         chanUse = data[12]
         fwVersion = int(
@@ -356,8 +376,8 @@ class NavienSmartControl:
                 "Error: Unknown Channel: An error occurred in the process of parsing channel information; please restart to retry."
             )
 
-    # Parse state response
     def parseStateResponse(self, commonResponseData, data):
+        """Parse state response"""
         stateResponseColumns = collections.namedtuple(
             "response",
             [
@@ -444,8 +464,8 @@ class NavienSmartControl:
         result.update(commonResponseData._asdict())
         return result
 
-    # Parse trend sample response
     def parseTrendSampleResponse(self, commonResponseData, data):
+        """Parse trend sample response"""
         if len(data) > 39:
             trendSampleResponseColumns = collections.namedtuple(
                 "response",
@@ -491,8 +511,8 @@ class NavienSmartControl:
         result.update(commonResponseData._asdict())
         return result
 
-    # Parse trend month or year response
     def parseTrendMYResponse(self, commonResponseData, data):
+        """Parse trend month or year response"""
         trendSampleMYResponseColumns = collections.namedtuple(
             "response",
             [
@@ -540,8 +560,8 @@ class NavienSmartControl:
         result.update(commonResponseData._asdict())
         return result
 
-    # Parse error code response
     def parseErrorCodeResponse(self, commonResponseData, data):
+        """Parse error code response"""
         errorResponseColumns = collections.namedtuple(
             "response",
             [
@@ -562,10 +582,10 @@ class NavienSmartControl:
         result.update(commonResponseData._asdict())
         return result
 
-    # ----- Convenience methods for printing response data in human readable form ----- #
+    # ----- Convenience methods for printing response data in human readable form -----
 
-    # Master handler for printing specific response data
     def printResponseHandler(self, responseData, temperatureType):
+        """Master handler for printing specific response data"""
         if ControlType(responseData["controlType"]) == ControlType.CHANNEL_INFORMATION:
             self.printChannelInformation(responseData)
         elif ControlType(responseData["controlType"]) == ControlType.STATE:
@@ -581,8 +601,8 @@ class NavienSmartControl:
         else:
             raise Exception("Error: unknown controlType in response")
 
-    # Print Channel Information response data
     def printChannelInformation(self, channelInformation):
+        """Print Channel Information response data"""
         for chan in range(1, len(channelInformation["channel"]) + 1):
             print("Channel:" + str(chan))
             print(
@@ -716,8 +736,8 @@ class NavienSmartControl:
                     ]
                 )
 
-    # Print State response data
     def printState(self, stateData, temperatureType):
+        """Print State response data"""
         # print(json.dumps(stateData, indent=2, default=str))
         print(
             "Controller Version: "
@@ -1091,8 +1111,8 @@ class NavienSmartControl:
             else:
                 print("\t\tNone")
 
-    # Print the trend sample response data
     def printTrendSample(self, trendSampleData, temperatureType):
+        """Print the trend sample response data"""
         # print(json.dumps(trendSampleData, indent=2, default=str))
         print(
             "Controller Version: "
@@ -1156,8 +1176,8 @@ class NavienSmartControl:
                 + str(self.bigHexToInt(trendSampleData["totalDHWUsageTime"]))
             )
 
-    # print the trend month or year response data
     def printTrendMY(self, trendMYData, temperatureType):
+        """Print the trend month or year response data"""
         # print(json.dumps(trendMYData, indent=2, default=str))
         print(
             "Controller Version: "
@@ -1347,8 +1367,8 @@ class NavienSmartControl:
             else:
                 raise Exception("Error: Invalid temperatureType")
 
-    # Print an error response
     def printError(self, errorData, temperatureType):
+        """Print an error response"""
         print(
             "Controller Version: "
             + str(self.bigHexToInt(errorData["controllerVersion"]))
@@ -1362,8 +1382,8 @@ class NavienSmartControl:
         print("Error Flag: " + str(errorData["errorFlag"]))
         print("Error Code: " + str(self.bigHexToInt(errorData["errorCD"])))
 
-    # Convert from a list of big endian hex byte array or string to an integer
     def bigHexToInt(self, hex):
+        """Convert from a list of big endian hex byte array or string to an integer"""
         if isinstance(hex, str):
             hex = bytearray(hex)
         if isinstance(hex, int):
@@ -1375,7 +1395,6 @@ class NavienSmartControl:
         littleHexStr = "".join("%02x" % b for b in littleHex)
         return int(littleHexStr, 16)
 
-    # Send a request to the binary API
     def sendRequest(
         self,
         gatewayID,
@@ -1387,6 +1406,7 @@ class NavienSmartControl:
         controlValue,
         WeeklyDay,
     ):
+        """Main handler for sending a request to the binary API"""
         requestHeader = {
             "stx": 0x07,
             "did": 0x99,
@@ -1461,8 +1481,8 @@ class NavienSmartControl:
         data = self.connection.recv(1024)
         return self.parseResponse(data)
 
-    # Helper function to initialize and populate the WeeklyDay dict
     def initWeeklyDay(self):
+        """Helper function to initialize and populate the WeeklyDay dict"""
         weeklyDay = {}
         weeklyDay["WeeklyDay"] = 0x00
         weeklyDay["WeeklyCount"] = 0x00
@@ -1474,8 +1494,8 @@ class NavienSmartControl:
 
     # ----- Convenience methods for sending requests ----- #
 
-    # Send state request
     def sendStateRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        """Send state request"""
         return self.sendRequest(
             gatewayID,
             currentControlChannel,
@@ -1487,8 +1507,8 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send channel information request (we already get this when we log in)
     def sendChannelInfoRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        """Send channel information request (we already get this when we log in)"""
         return self.sendRequest(
             gatewayID,
             currentControlChannel,
@@ -1500,8 +1520,8 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send trend sample request
     def sendTrendSampleRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        """Send trend sample request"""
         return self.sendRequest(
             gatewayID,
             currentControlChannel,
@@ -1513,8 +1533,8 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send trend month request
     def sendTrendMonthRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        """Send trend month request"""
         return self.sendRequest(
             gatewayID,
             currentControlChannel,
@@ -1526,8 +1546,8 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send trend year request
     def sendTrendYearRequest(self, gatewayID, currentControlChannel, deviceNumber):
+        """Send trend year request"""
         return self.sendRequest(
             gatewayID,
             currentControlChannel,
@@ -1539,10 +1559,10 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send device power control request
     def sendPowerControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, powerState
     ):
+        """Send device power control request"""
         return self.sendRequest(
             gatewayID,
             currentControlChannel,
@@ -1554,10 +1574,10 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send device heat control request
     def sendHeatControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, channelData, heatState
     ):
+        """Send device heat control request"""
         if (
             NFBWaterFlag(
                 (
@@ -1581,10 +1601,10 @@ class NavienSmartControl:
                 self.initWeeklyDay(),
             )
 
-    # Send device on demand control request
     def sendOnDemandControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, channelData
     ):
+        """Send device on demand control request"""
         if (
             RecirculationFlag(
                 (
@@ -1608,10 +1628,10 @@ class NavienSmartControl:
                 self.initWeeklyDay(),
             )
 
-    # Send device weekly control schedule (enable or disable weekly schedule)
     def sendDeviceWeeklyControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, weeklyState
     ):
+        """Send device weekly control schedule (enable or disable weekly schedule)"""
         return self.sendRequest(
             gatewayID,
             currentControlChannel,
@@ -1623,10 +1643,10 @@ class NavienSmartControl:
             self.initWeeklyDay(),
         )
 
-    # Send device water temperature control request
     def sendWaterTempControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, channelData, tempVal
     ):
+        """Send device water temperature control request"""
         if (
             tempVal
             > channelData["channel"][str(currentControlChannel)][
@@ -1651,10 +1671,10 @@ class NavienSmartControl:
                 self.initWeeklyDay(),
             )
 
-    # Send device heating water temperature control request
     def sendHeatingWaterTempControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, channelData, tempVal
     ):
+        """Send device heating water temperature control request"""
         if (
             NFBWaterFlag(
                 (
@@ -1690,10 +1710,10 @@ class NavienSmartControl:
                 self.initWeeklyDay(),
             )
 
-    # Send recirculation temperature control request
     def sendRecirculationTempControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, channelData, tempVal
     ):
+        """Send recirculation temperature control request"""
         if (
             RecirculationFlag(
                 (
@@ -1733,11 +1753,13 @@ class NavienSmartControl:
 
     # Send request to set weekly schedule
     def sendDeviceControlWeeklyScheduleRequest(self, stateData, WeeklyDay, action):
-        # The state information contains the gatewayID, currentControlChannel,
-        # deviceNumber and all current WeeklyDay schedules. We need to compare
-        # current WeeklyDay schedule with requested modifications and apply as
-        # needed.
-        # Note: Only one schedule entry can be modified at a time.
+        """
+        Send request to set weekly schedule
+        
+        The state information contains the gatewayID, currentControlChannel, deviceNumber and all current WeeklyDay schedules. We need to compare current WeeklyDay schedule with requested modifications and apply as needed.
+
+        Note: Only one schedule entry can be modified at a time.
+        """
 
         if (WeeklyDay["hour"] > 23) or (WeeklyDay["minute"] > 59):
             raise Exception("Error: Invalid weeklyday schedule time requested")
