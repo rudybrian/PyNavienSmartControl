@@ -1770,28 +1770,16 @@ class NavienSmartControl:
         :param deviceNumber: The device number on the serial bus corresponding with the device
         :return: Parsed response data
         """
-        if (
-            RecirculationFlag(
-                (
-                    channelData["channel"][str(currentControlChannel)]["wwsdFlag"]
-                    & WWSDMask.RECIRCULATION_POSSIBILITY.value
-                )
-                > 0
-            )
-            == RecirculationFlag.OFF
-        ):
-            raise Exception("Error: Recirculation is disabled.")
-        else:
-            return self.sendRequest(
-                gatewayID,
-                currentControlChannel,
-                deviceNumber,
-                ControlSorting.CONTROL.value,
-                ControlType.UNKNOWN.value,
-                DeviceControl.ON_DEMAND.value,
-                OnOFFFlag.ON.value,
-                self.initWeeklyDay(),
-            )
+        return self.sendRequest(
+            gatewayID,
+            currentControlChannel,
+            deviceNumber,
+            ControlSorting.CONTROL.value,
+            ControlType.UNKNOWN.value,
+            DeviceControl.ON_DEMAND.value,
+            OnOFFFlag.ON.value,
+            self.initWeeklyDay(),
+        )
 
     def sendDeviceWeeklyControlRequest(
         self, gatewayID, currentControlChannel, deviceNumber, weeklyState
