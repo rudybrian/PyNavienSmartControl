@@ -1,4 +1,14 @@
 # PyNavienSmartControl
+
+## Note that this project is now archived.
+
+> Hi folks, 
+>
+> After some consideration, I think it's time to archive this project as it has served it's intended purpose. With Navien's new v2 protocol requiring a total refactor > and @nikshriv having already fully integrated the changes into Home Assistant with his [actively maintained HASS integration] > (https://github.com/nikshriv/hass_navien_water_heater), it's time has come.
+>
+> I am happy that my minor contribution along the way has led to what is now a usable IoT/Smart Home product.
+
+
 Python library for getting information about and controlling your Navien tankless water heater, combi-boiler or boiler connected via NaviLink.
 
 Originally based on [matthew1471/Navien-API](https://github.com/matthew1471/Navien-API/), this module and tools have been completely rewritten to support the current protocols used by mobile applications.
